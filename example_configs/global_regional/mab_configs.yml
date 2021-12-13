@@ -1,0 +1,166 @@
+contexts:
+    -   priority: 1
+        region: mab
+        window:
+            starting: 2021-07-01T00:00:00Z
+            ending: 2021-08-31T23:59:59Z
+        streams:
+            conductivity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [3, 5.5]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.005
+                        fail_threshold: 0.07
+                    rate_of_change_test: 
+                        threshold: 0.07
+            temperature:
+                qartod:
+                    climatology_test:
+                        suspect_span: [5, 27]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.06
+                        fail_threshold: 0.8
+                    rate_of_change_test: 
+                        threshold: 0.8
+            pressure:
+                qartod:
+                    pressure_test:
+                        suspect_threshold: 0
+                    spike_test: 
+                        suspect_threshold: 0.2
+                        fail_threshold: 0.45
+                    rate_of_change_test: 
+                        threshold: 0.45
+            salinity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [28, 37]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.015
+                        fail_threshold: 0.2
+                    rate_of_change_test: 
+                        threshold: 0.2
+            density:
+                qartod:
+                    climatology_test:
+                        suspect_span: [1018, 1026]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.025
+                        fail_threshold: 0.3
+                    rate_of_change_test: 
+                        threshold: 0.3
+    -   priority: 1
+        region: mab
+        window:
+            starting: 2021-09-01T00:00:00Z
+            ending: 2021-11-30T23:59:59Z
+        streams:
+            conductivity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [3, 5.5]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.001
+                        fail_threshold: 0.03
+                    rate_of_change_test: 
+                        threshold: 0.03
+            temperature:
+                qartod:
+                    climatology_test:
+                        suspect_span: [5, 22]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.01
+                        fail_threshold: 0.4
+                    rate_of_change_test: 
+                        threshold: 0.4
+            pressure:
+                qartod:
+                    pressure_test:
+                        suspect_threshold: 0
+                    spike_test: 
+                        suspect_threshold: 0.2
+                        fail_threshold: 0.45
+                    rate_of_change_test: 
+                        threshold: 0.45
+            salinity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [30, 37]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.005
+                        fail_threshold: 0.05
+                    rate_of_change_test: 
+                        threshold: 0.05
+            density:
+                qartod:
+                    climatology_test:
+                        suspect_span: [1020, 1029]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.005
+                        fail_threshold: 0.15
+                    rate_of_change_test: 
+                        threshold: 0.15
+    -   priority: 3
+        region: mab
+        window:
+            starting: 2021-01-01T00:00:00Z
+            ending: 2021-12-31T23:59:59Z
+        streams:
+            conductivity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [3, 5.5]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.005
+                        fail_threshold: 0.07
+                    rate_of_change_test: 
+                        threshold: 0.07
+            temperature:
+                qartod:
+                    climatology_test:
+                        suspect_span: [5, 27]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.06
+                        fail_threshold: 0.8
+                    rate_of_change_test: 
+                        threshold: 0.8
+            pressure:
+                qartod:
+                    pressure_test:
+                        suspect_threshold: 0
+                    spike_test: 
+                        suspect_threshold: 0.2
+                        fail_threshold: 0.45
+                    rate_of_change_test: 
+                        threshold: 0.45
+            salinity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [15, 40]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.015
+                        fail_threshold: 0.2
+                    rate_of_change_test: 
+                        threshold: 0.2
+            density:
+                qartod:
+                    climatology_test:
+                        suspect_span: [1010, 1030]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.025
+                        fail_threshold: 0.3
+                    rate_of_change_test: 
+                        threshold: 0.3

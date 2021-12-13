@@ -1,0 +1,56 @@
+contexts:
+    -   priority: 5
+        region: global
+        window:
+            starting: 2021-01-01T00:00:00Z
+            ending: 2021-12-31T23:59:59Z
+        streams:
+            conductivity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [2, 5.5]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.005
+                        fail_threshold: 0.07
+                    rate_of_change_test: 
+                        threshold: 0.07
+            temperature:
+                qartod:
+                    climatology_test:
+                        suspect_span: [-2, 35]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.06
+                        fail_threshold: 0.8
+                    rate_of_change_test: 
+                        threshold: 0.8
+            pressure:
+                qartod:
+                    pressure_test:
+                        suspect_threshold: 0
+                    spike_test: 
+                        suspect_threshold: 0.2
+                        fail_threshold: 0.45
+                    rate_of_change_test: 
+                        threshold: 0.45
+            salinity:
+                qartod:
+                    climatology_test:
+                        suspect_span: [15, 40]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.015
+                        fail_threshold: 0.2
+                    rate_of_change_test: 
+                        threshold: 0.2
+            density:
+                qartod:
+                    climatology_test:
+                        suspect_span: [1010, 1030]
+                        fail_span:
+                    spike_test: 
+                        suspect_threshold: 0.025
+                        fail_threshold: 0.3
+                    rate_of_change_test: 
+                        threshold: 0.3

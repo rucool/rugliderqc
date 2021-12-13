@@ -1,0 +1,5 @@
+ctd_hysteresis_test:
+    suspect_threshold: .1
+    fail_threshold: .2
+
+
