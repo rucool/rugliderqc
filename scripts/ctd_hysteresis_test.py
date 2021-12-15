@@ -165,6 +165,7 @@ def main(args):
             # Iterate through the possible conductivity variables
             failed_files = 0
             suspect_files = 0
+            unknown_files = 0
             for cv in conductivity_varnames:
 
                 # Iterate through files
@@ -207,6 +208,7 @@ def main(args):
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
                         # leave flag values as UNKNOWN (2), set the attributes and save the .nc file
                         save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                        unknown_files += 1
                     else:  # first profile is down, check the next file
                         try:
                             f2 = ncfiles[i + 1]
@@ -220,6 +222,7 @@ def main(args):
                             # if there are no more files, leave flag values on the first file as UNKNOWN (2)
                             # set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            unknown_files += 1
                             continue
 
                         try:
@@ -230,6 +233,7 @@ def main(args):
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            unknown_files += 1
                             continue
 
                         data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, cv)
@@ -240,6 +244,7 @@ def main(args):
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
                             # but don't skip because this second file will now be the first file in the next loop
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            unknown_files += 1
                         else:
                             # first profile is down and second profile is up
                             # determine if the end/start timestamps are < 5 minutes apart,
@@ -298,20 +303,25 @@ def main(args):
                                     # (or flag values = UNKNOWN (2) if the profile depth range is <5 dbar)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                    if 2. in flag_vals:
+                                        unknown_files += 2
                                     skip += 1
 
                                 else:
                                     # if there is no data left after QARTOD tests are applied, leave flag values UNKNOWN (2)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                    unknown_files += 2
                                     skip += 1
                             else:
                                 # if timestamps are too far apart they're likely not from the same profile pair
                                 # leave flag values as UNKNOWN (2), set the attributes and save the .nc files
                                 save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
                                 save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                unknown_files += 2
                                 skip += 1
 
+            logging.info(' {:} unknown files found (of {:} total files)'.format(unknown_files, len(ncfiles)))
             logging.info(' {:} suspect files found (of {:} total files)'.format(suspect_files, len(ncfiles)))
             logging.info(' {:} failed files found (of {:} total files)'.format(failed_files, len(ncfiles)))
     return status
