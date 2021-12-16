@@ -130,7 +130,7 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            logging.info('Checking for CTD sensor lag: {:s}'.format(os.path.join(data_path, 'queue')))
+            logging.info('Checking for CTD sensor lag: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Set the deployment qc configuration path
             deployment_location = data_path.split('/data')[0]
@@ -153,10 +153,10 @@ def main(args):
             hysteresis_thresholds = config_dict['ctd_hysteresis_test']
 
             # List the netcdf files
-            ncfiles = sorted(glob.glob(os.path.join(data_path, 'queue', '*.nc')))
+            ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
 
             if len(ncfiles) == 0:
-                logging.error(' 0 files found to QC: {:s}'.format(os.path.join(data_path, 'queue')))
+                logging.error(' 0 files found to QC: {:s}'.format(os.path.join(data_path, 'qc_queue')))
                 status = 1
                 continue
 

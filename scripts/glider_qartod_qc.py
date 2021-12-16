@@ -157,13 +157,13 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            logging.info('Running glider QARTOD QC: {:s}'.format(os.path.join(data_path, 'queue')))
+            logging.info('Running glider QARTOD QC: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
-            # List the netcdf files in queue
-            ncfiles = sorted(glob.glob(os.path.join(data_path, 'queue', '*.nc')))
+            # List the netcdf files in qc_queue
+            ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
 
             if len(ncfiles) == 0:
-                logging.error(' 0 files found to QC: {:s}'.format(os.path.join(data_path, 'queue')))
+                logging.error(' 0 files found to QC: {:s}'.format(os.path.join(data_path, 'qc_queue')))
                 status = 1
                 continue
 

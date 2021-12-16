@@ -3,7 +3,7 @@
 """
 Author: lgarzio on 12/7/2021
 Last modified: lgarzio on 12/10/2021
-Move quality controlled glider NetCDF files to the final data directory (out of queue) to send to ERDDAP
+Move quality controlled glider NetCDF files to the final data directory (out of qc_queue) to send to ERDDAP
 """
 
 import os
@@ -46,11 +46,11 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            # List the netcdf files in queue
-            ncfiles = sorted(glob.glob(os.path.join(data_path, 'queue', '*.nc')))
+            # List the netcdf files in qc_queue
+            ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
 
             if len(ncfiles) == 0:
-                logging.error(' 0 files found to move: {:s}'.format(os.path.join(data_path, 'queue')))
+                logging.error(' 0 files found to move: {:s}'.format(os.path.join(data_path, 'qc_queue')))
                 status = 1
                 continue
 
