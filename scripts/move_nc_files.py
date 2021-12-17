@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 12/10/2021
+Last modified: lgarzio on 12/17/2021
 Move quality controlled glider NetCDF files to the final data directory (out of qc_queue) to send to ERDDAP
 """
 
@@ -22,11 +22,12 @@ def main(args):
     cdm_data_type = args.cdm_data_type
     mode = args.mode
     dataset_type = args.level
+    test = args.test
 
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base)
+    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         for deployment in args.deployments:
@@ -94,6 +95,10 @@ if __name__ == '__main__':
                             type=str,
                             choices=['debug', 'info', 'warning', 'error', 'critical'],
                             default='info')
+
+    arg_parser.add_argument('-test', '--test',
+                            help='Point to the environment variable key GLIDER_DATA_HOME_TEST for testing.',
+                            action='store_true')
 
     parsed_args = arg_parser.parse_args()
 

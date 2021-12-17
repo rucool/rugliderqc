@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio 12/10/2021
+Last modified: lgarzio 12/17/2021
 This is a wrapper script that imports tools to quality control RUCOOL's glider data.
 """
 
@@ -37,6 +37,10 @@ arg_parser.add_argument('-l', '--loglevel',
                         type=str,
                         choices=['debug', 'info', 'warning', 'error', 'critical'],
                         default='info')
+
+arg_parser.add_argument('-test', '--test',
+                            help='Point to the environment variable key GLIDER_DATA_HOME_TEST for testing.',
+                            action='store_true')
 
 parsed_args = arg_parser.parse_args()
 
