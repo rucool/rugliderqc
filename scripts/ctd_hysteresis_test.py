@@ -21,21 +21,21 @@ from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymen
 np.set_printoptions(suppress=True)
 
 
-def apply_qartod_qc(dataset, cond_varname):
-    # make a copy of conductivity and apply QARTOD QC flags
-    cond_copy = dataset[cond_varname].copy()
-    for qv in [x for x in dataset.data_vars if f'{cond_varname}_qartod' in x]:
+def apply_qartod_qc(dataset, varname):
+    # make a copy of the data and apply QARTOD QC flags
+    datacopy = dataset[varname].copy()
+    for qv in [x for x in dataset.data_vars if f'{varname}_qartod' in x]:
         qv_idx = np.where(np.logical_or(dataset[qv].values == 3, dataset[qv].values == 4))[0]
-        cond_copy[qv_idx] = np.nan
-    return cond_copy
+        datacopy[qv_idx] = np.nan
+    return datacopy
 
 
-def initialize_flags(dataset, cond_varname):
+def initialize_flags(dataset, varname):
     # start with flag values UNKNOWN (2)
-    flags = 2 * np.ones(np.shape(dataset[cond_varname].values))
+    flags = 2 * np.ones(np.shape(dataset[varname].values))
 
     # identify where not nan
-    non_nan_ind = np.invert(np.isnan(dataset[cond_varname].values))
+    non_nan_ind = np.invert(np.isnan(dataset[varname].values))
     # get locations of non-nans
     non_nan_i = np.where(non_nan_ind)[0]
 
@@ -48,9 +48,9 @@ def initialize_flags(dataset, cond_varname):
     return non_nan_i, press_non_nan_ind, flags
 
 
-def save_ds(dataset, flag_array, attributes, variable_name, save_file, cond_varname):
+def save_ds(dataset, flag_array, attributes, variable_name, save_file, varname):
     # Add QC variable to the original dataset
-    da = xr.DataArray(flag_array, coords=dataset[cond_varname].coords, dims=dataset[cond_varname].dims,
+    da = xr.DataArray(flag_array, coords=dataset[varname].coords, dims=dataset[varname].dims,
                       name=variable_name, attrs=attributes)
     dataset[variable_name] = da
 
@@ -160,13 +160,13 @@ def main(args):
                 status = 1
                 continue
 
-            conductivity_varnames = ['conductivity']
+            test_varnames = ['conductivity']
 
             # Iterate through the possible conductivity variables
             failed_files = 0
             suspect_files = 0
             unknown_files = 0
-            for cv in conductivity_varnames:
+            for testvar in test_varnames:
 
                 # Iterate through files
                 skip = 0
@@ -183,23 +183,23 @@ def main(args):
                         continue
 
                     try:
-                        ds[cv]
+                        ds[testvar]
                     except KeyError:
                         logging.error('conductivity variable not found in file {:s})'.format(ncfiles[i]))
                         status = 1
                         continue
 
                     # Find the instrument to which the conductivity variable is associated
-                    ctd_instrument = [x for x in ds[cv].ancillary_variables.split(' ') if 'instrument_ctd' in x][0]
+                    ctd_instrument = [x for x in ds[testvar].ancillary_variables.split(' ') if 'instrument_ctd' in x][0]
 
                     qc_varname = f'{ctd_instrument}_hysteresis_test'
                     kwargs = dict()
                     kwargs['thresholds'] = hysteresis_thresholds
-                    attrs = set_hysteresis_attrs(qc_varname, cv, **kwargs)
-                    data_idx, pressure_idx, flag_vals = initialize_flags(ds, cv)
+                    attrs = set_hysteresis_attrs(qc_varname, testvar, **kwargs)
+                    data_idx, pressure_idx, flag_vals = initialize_flags(ds, testvar)
 
                     if len(data_idx) == 0:
-                        logging.error('conductivity data not found in file {:s})'.format(ncfiles[i]))
+                        logging.error('{:s} data not found in file {:s})'.format(testvar, ncfiles[i]))
                         status = 1
                         continue
 
@@ -207,7 +207,7 @@ def main(args):
                     if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
                         # leave flag values as UNKNOWN (2), set the attributes and save the .nc file
-                        save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                        save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                         unknown_files += 1
                     else:  # first profile is down, check the next file
                         try:
@@ -221,29 +221,29 @@ def main(args):
                         except IndexError:
                             # if there are no more files, leave flag values on the first file as UNKNOWN (2)
                             # set the attributes and save the first .nc file
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                             unknown_files += 1
                             continue
 
                         try:
-                            ds2[cv]
+                            ds2[testvar]
                         except KeyError:
-                            logging.error('conductivity variable not found in file {:s})'.format(f2))
+                            logging.error('test variable {:s} not found in file {:s})'.format(testvar, f2))
                             status = 1
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                             unknown_files += 1
                             continue
 
-                        data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, cv)
+                        data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
 
                         # determine if second profile is up or down
                         if ds2.pressure.values[pressure_idx2][0] < ds2.pressure.values[pressure_idx2][-1]:
                             # if second profile is also down, test can't be run on the first file
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
                             # but don't skip because this second file will now be the first file in the next loop
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
+                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                             unknown_files += 1
                         else:
                             # first profile is down and second profile is up
@@ -251,18 +251,18 @@ def main(args):
                             # indicating a paired yo (down-up profile pair)
                             if ds2.time.values[0] - ds.time.values[-1] < np.timedelta64(5, 'm'):
 
-                                # make a copy of conductivity and apply QARTOD QC flags
-                                conductivity_copy = apply_qartod_qc(ds, cv)
-                                conductivity_copy2 = apply_qartod_qc(ds2, cv)
+                                # make a copy of the data and apply QARTOD QC flags
+                                data_copy = apply_qartod_qc(ds, testvar)
+                                data_copy2 = apply_qartod_qc(ds2, testvar)
 
                                 # both yos must have data remaining after QARTOD flags are applied,
                                 # otherwise, test can't be run and leave the flag values as UNKNOWN (2)
-                                if np.logical_and(np.sum(~np.isnan(conductivity_copy)) > 0, np.sum(~np.isnan(conductivity_copy2)) > 0):
+                                if np.logical_and(np.sum(~np.isnan(data_copy)) > 0, np.sum(~np.isnan(data_copy2)) > 0):
                                     # calculate the area between the two profiles
-                                    df = conductivity_copy.to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
-                                    df2 = conductivity_copy2.to_dataframe().merge(ds2.pressure.to_dataframe(), on='time')
+                                    df = data_copy.to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
+                                    df2 = data_copy2.to_dataframe().merge(ds2.pressure.to_dataframe(), on='time')
                                     df = df.append(df2)
-                                    df = df.dropna(subset=['pressure', cv])
+                                    df = df.dropna(subset=['pressure', testvar])
 
                                     # If the profile depth range is >5 dbar, run the test. Otherwise leave flags UNKNOWN (2)
                                     # since hysteresis can't be determined with a profile that doesn't span a substantial
@@ -283,7 +283,7 @@ def main(args):
 
                                         # normalize area between the profiles to the pressure range
                                         area = valid_polygons.area / pressure_range
-                                        data_range = (np.nanmax(df[cv].values) - np.nanmin(df[cv].values))
+                                        data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
 
                                         # Flag failed profiles
                                         if area > data_range * hysteresis_thresholds['fail_threshold']:
@@ -301,23 +301,23 @@ def main(args):
 
                                     # save both .nc files with hysteresis flag applied
                                     # (or flag values = UNKNOWN (2) if the profile depth range is <5 dbar)
-                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
-                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
                                     if 2. in flag_vals:
                                         unknown_files += 2
                                     skip += 1
 
                                 else:
                                     # if there is no data left after QARTOD tests are applied, leave flag values UNKNOWN (2)
-                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
-                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
                                     unknown_files += 2
                                     skip += 1
                             else:
                                 # if timestamps are too far apart they're likely not from the same profile pair
                                 # leave flag values as UNKNOWN (2), set the attributes and save the .nc files
-                                save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], cv)
-                                save_ds(ds2, flag_vals2, attrs, qc_varname, f2, cv)
+                                save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                                save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
                                 unknown_files += 2
                                 skip += 1
 
