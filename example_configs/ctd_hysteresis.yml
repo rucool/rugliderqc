@@ -1,5 +1,6 @@
-ctd_hysteresis_test:
+conductivity_hysteresis_test:
     suspect_threshold: .1
     fail_threshold: .2
-
-
+temperature_hysteresis_test:
+    suspect_threshold: .1
+    fail_threshold: .2

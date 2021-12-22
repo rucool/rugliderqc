@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 12/17/2021
+Last modified: lgarzio on 12/21/2021
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -70,9 +70,12 @@ def set_hysteresis_attrs(test, sensor, thresholds=None):
     flag_meanings = 'GOOD UNKNOWN SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
     standard_name = f'{test}_quality_flag'
-    long_name = 'CTD Hysteresis Test Quality Flag'
-    comment = 'Test for CTD sensor lag, determined by comparing the area between profile pairs normalized to ' \
-              'pressure range against the data range times defined thresholds found in flag_configurations.'
+    if 'ctd' in test:
+        long_name = 'CTD Hysteresis Test Quality Flag'
+    else:
+        long_name = f'{sensor.capitalize()} Hysteresis Test Quality Flag'
+    comment = 'Test for {} lag, determined by comparing the area between profile pairs normalized to pressure ' \
+              'range against the data range multiplied by thresholds found in flag_configurations.'.format(sensor)
 
     # Defining QC variable attributes
     attrs = {
@@ -150,7 +153,6 @@ def main(args):
 
             logging.info('Using config file: {:s}'.format(config_file))
             config_dict = loadconfig(config_file)
-            hysteresis_thresholds = config_dict['ctd_hysteresis_test']
 
             # List the netcdf files
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
@@ -160,39 +162,57 @@ def main(args):
                 status = 1
                 continue
 
-            test_varnames = ['conductivity']
+            test_varnames = ['conductivity', 'temperature']
 
-            # Iterate through the possible conductivity variables
-            failed_files = 0
-            suspect_files = 0
-            unknown_files = 0
-            for testvar in test_varnames:
+            # build the summary
+            summary = dict()
+            for tv in test_varnames:
+                summary[tv] = dict()
+                summary[tv]['failed_profiles'] = 0
+                summary[tv]['suspect_profiles'] = 0
+                summary[tv]['unknown_profiles'] = 0
 
-                # Iterate through files
-                skip = 0
-                for i, f in enumerate(ncfiles):
-                    i += skip
-                    try:
-                        with xr.open_dataset(ncfiles[i]) as ds:
-                            ds = ds.load()
-                    except OSError as e:
-                        logging.error('Error reading file {:s} ({:})'.format(ncfiles[i], e))
-                        status = 1
-                        continue
-                    except IndexError:
-                        continue
+            # Iterate through files
+            skip = 0
+            for i, f in enumerate(ncfiles):
+                # skip the files that have already been QC'd
+                try:
+                    if f2skip > 0:
+                        skip += 1
+                except UnboundLocalError:
+                    skip += 0
+
+                i += skip
+
+                try:
+                    with xr.open_dataset(ncfiles[i]) as ds:
+                        ds = ds.load()
+                except OSError as e:
+                    logging.error('Error reading file {:s} ({:})'.format(ncfiles[i], e))
+                    status = 1
+                    continue
+                except IndexError:
+                    continue
+
+                f2skip = 0
+
+                # Iterate through the test variables
+                for testvar in test_varnames:
+                    # get the configuration thresholds
+                    hysteresis_thresholds = config_dict[f'{testvar}_hysteresis_test']
 
                     try:
                         ds[testvar]
                     except KeyError:
-                        logging.error('conductivity variable not found in file {:s})'.format(ncfiles[i]))
+                        logging.error('{:s} not found in file {:s})'.format(testvar, ncfiles[i]))
                         status = 1
                         continue
 
-                    # Find the instrument to which the conductivity variable is associated
-                    ctd_instrument = [x for x in ds[testvar].ancillary_variables.split(' ') if 'instrument_ctd' in x][0]
+                    # Find the CTD instrument name
+                    # ctd_instrument = [x for x in ds[testvar].ancillary_variables.split(' ') if 'instrument_ctd' in x][0]
 
-                    qc_varname = f'{ctd_instrument}_hysteresis_test'
+                    # qc_varname = f'{ctd_instrument}_hysteresis_test'
+                    qc_varname = f'{testvar}_hysteresis_test'
                     kwargs = dict()
                     kwargs['thresholds'] = hysteresis_thresholds
                     attrs = set_hysteresis_attrs(qc_varname, testvar, **kwargs)
@@ -208,7 +228,7 @@ def main(args):
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
                         # leave flag values as UNKNOWN (2), set the attributes and save the .nc file
                         save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                        unknown_files += 1
+                        summary[testvar]['unknown_profiles'] += 1
                     else:  # first profile is down, check the next file
                         try:
                             f2 = ncfiles[i + 1]
@@ -217,23 +237,23 @@ def main(args):
                         except OSError as e:
                             logging.error('Error reading file {:s} ({:})'.format(f2, e))
                             status = 1
-                            skip += 1
+                            f2skip += 1
                         except IndexError:
                             # if there are no more files, leave flag values on the first file as UNKNOWN (2)
                             # set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            unknown_files += 1
+                            summary[testvar]['unknown_profiles'] += 1
                             continue
 
                         try:
                             ds2[testvar]
                         except KeyError:
-                            logging.error('test variable {:s} not found in file {:s})'.format(testvar, f2))
+                            logging.error('{:s} not found in file {:s})'.format(testvar, f2))
                             status = 1
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            unknown_files += 1
+                            summary[testvar]['unknown_profiles'] += 1
                             continue
 
                         data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
@@ -244,7 +264,7 @@ def main(args):
                             # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
                             # but don't skip because this second file will now be the first file in the next loop
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            unknown_files += 1
+                            summary[testvar]['unknown_profiles'] += 1
                         else:
                             # first profile is down and second profile is up
                             # determine if the end/start timestamps are < 5 minutes apart,
@@ -288,11 +308,11 @@ def main(args):
                                         # Flag failed profiles
                                         if area > data_range * hysteresis_thresholds['fail_threshold']:
                                             flag = qartod.QartodFlags.FAIL
-                                            failed_files += 2
+                                            summary[testvar]['failed_profiles'] += 2
                                         # Flag suspect profiles
                                         elif area > data_range * hysteresis_thresholds['suspect_threshold']:
                                             flag = qartod.QartodFlags.SUSPECT
-                                            suspect_files += 2
+                                            summary[testvar]['suspect_profiles'] += 2
                                         # Otherwise, both profiles are good
                                         else:
                                             flag = qartod.QartodFlags.GOOD
@@ -304,26 +324,34 @@ def main(args):
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
                                     if 2. in flag_vals:
-                                        unknown_files += 2
-                                    skip += 1
+                                        summary[testvar]['unknown_profiles'] += 2
+                                    f2skip += 1
 
                                 else:
                                     # if there is no data left after QARTOD tests are applied, leave flag values UNKNOWN (2)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
-                                    unknown_files += 2
-                                    skip += 1
+                                    summary[testvar]['unknown_profiles'] += 2
+                                    f2skip += 1
                             else:
                                 # if timestamps are too far apart they're likely not from the same profile pair
                                 # leave flag values as UNKNOWN (2), set the attributes and save the .nc files
                                 save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                 save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
-                                unknown_files += 2
-                                skip += 1
+                                summary[testvar]['unknown_profiles'] += 2
+                                f2skip += 1
 
-            logging.info(' {:} unknown files found (of {:} total files)'.format(unknown_files, len(ncfiles)))
-            logging.info(' {:} suspect files found (of {:} total files)'.format(suspect_files, len(ncfiles)))
-            logging.info(' {:} failed files found (of {:} total files)'.format(failed_files, len(ncfiles)))
+            for tv in test_varnames:
+                tvs = summary[tv]
+                logging.info('{:s}: {:} unknown profiles found (of {:} total profiles)'.format(tv,
+                                                                                               tvs['unknown_profiles'],
+                                                                                               len(ncfiles)))
+                logging.info('{:s}: {:} suspect profiles found (of {:} total profiles)'.format(tv,
+                                                                                               tvs['suspect_profiles'],
+                                                                                               len(ncfiles)))
+                logging.info('{:s}: {:} failed profiles found (of {:} total profiles)'.format(tv,
+                                                                                              tvs['failed_profiles'],
+                                                                                              len(ncfiles)))
     return status
 
 
