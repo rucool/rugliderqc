@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio 12/17/2021
+Last modified: lgarzio 12/22/2021
 This is a wrapper script that imports tools to quality control RUCOOL's glider data.
 """
 
@@ -43,6 +43,9 @@ arg_parser.add_argument('-test', '--test',
                         action='store_true')
 
 parsed_args = arg_parser.parse_args()
+
+# check for files that are missing CTD science variables
+scripts.check_science_variables.main(parsed_args)
 
 # check files that have duplicate timestamps
 scripts.check_duplicate_timestamps.main(parsed_args)

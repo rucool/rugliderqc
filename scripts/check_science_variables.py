@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 
 """
-Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 12/17/2021
-Check two consecutive .nc files for duplicated timestamps and rename files that are full duplicates of all or part
-of another file.
+Author: lgarzio on 12/22/2021
+Last modified: lgarzio on 12/22/2021
+Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
+doesn't contain any of those variables, or only contains pressure.
 """
 
 import os
 import argparse
 import sys
 import glob
-import numpy as np
 import xarray as xr
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
@@ -49,7 +48,7 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            logging.info('Checking duplicated timestamps: {:s}'.format(os.path.join(data_path, 'qc_queue')))
+            logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # List the netcdf files in qc_queue
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
@@ -59,57 +58,37 @@ def main(args):
                 status = 1
                 continue
 
+            pressure_vars = ['pressure', 'pressure2', 'pressure_rbr', 'rbr_pressure', 'sci_water_pressure']
+            sci_vars = ['conductivity', 'conductivity2', 'conductivity_rbr', 'rbr_conductivity',
+                        'temperature', 'temperature2', 'temperature_rbr', 'rbr_temperature']
+
             # Iterate through files and find duplicated timestamps
-            duplicates = 0
-            for i, f in enumerate(ncfiles):
+            summary = 0
+            for f in ncfiles:
                 try:
                     ds = xr.open_dataset(f)
                 except OSError as e:
-                    logging.error('Error reading file {:s} ({:})'.format(ncfiles[i], e))
+                    logging.error('Error reading file {:s} ({:})'.format(f, e))
                     status = 1
                     continue
 
-                # find the next file and compare timestamps
-                try:
-                    f2 = ncfiles[i + 1]
-                    ds2 = xr.open_dataset(f2)
-                except OSError as e:
-                    logging.error('Error reading file {:s} ({:})'.format(ncfiles[i + 1], e))
-                    status = 1
-                    continue
-                except IndexError:
-                    continue
+                # check for pressure
+                ds_pressure_vars = list(set(ds.data_vars).intersection(set(pressure_vars)))
 
-                # find the unique timestamps between the two datasets
-                unique_timestamps = list(set(ds.time.values).symmetric_difference(set(ds2.time.values)))
-
-                # find the unique timestamps in each dataset
-                check_ds = [t for t in ds.time.values if t in unique_timestamps]
-                check_ds2 = [t for t in ds2.time.values if t in unique_timestamps]
-
-                # if the unique timestamps aren't found in either dataset (i.e. timestamps are exactly the same)
-                # rename the second dataset
-                if np.logical_and(len(check_ds) == 0, len(check_ds2) == 0):
-                    os.rename(f2, f'{f2}.duplicate')
-                    logging.info('Duplicated timestamps found in file: {:s}'.format(f2))
-                    duplicates += 1
-                # if the unique timestamps aren't found in the second dataset, rename it
-                elif np.logical_and(len(check_ds) > 0, len(check_ds2) == 0):
-                    os.rename(f2, f'{f2}.duplicate')
-                    logging.info('Duplicated timestamps found in file: {:s}'.format(f2))
-                    duplicates += 1
-                # if the unique timestamps aren't found in the first dataset, rename it
-                elif np.logical_and(len(check_ds) == 0, len(check_ds2) > 0):
-                    try:
-                        os.rename(f, f'{f}.duplicate')
-                        logging.info('Duplicated timestamps found in file: {:s}'.format(f))
-                        duplicates += 1
-                    except FileNotFoundError:  # file has already been identified as a duplicate
-                        continue
+                if len(ds_pressure_vars) == 0:
+                    os.rename(f, f'{f}.nosci')
+                    logging.info('Pressure not found in file: {:s}'.format(f))
+                    summary += 1
                 else:
-                    continue
+                    # check for conductivity or temperature
+                    ds_sci_vars = list(set(ds.data_vars).intersection(set(sci_vars)))
 
-            logging.info('Found {:} duplicated files (of {:} total files)'.format(duplicates, len(ncfiles)))
+                    if len(ds_sci_vars) == 0:
+                        os.rename(f, f'{f}.nosci')
+                        logging.info('Temperature and/or conductivity not found in file: {:s}'.format(f))
+                        summary += 1
+
+            logging.info('Found {:} files without CTD science variables (of {:} total files)'.format(summary, len(ncfiles)))
         return status
 
 
