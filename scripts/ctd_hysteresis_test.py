@@ -232,18 +232,20 @@ def main(args):
                     else:  # first profile is down, check the next file
                         try:
                             f2 = ncfiles[i + 1]
-                            with xr.open_dataset(f2) as ds2:
-                                ds2 = ds2.load()
-                        except OSError as e:
-                            logging.error('Error reading file {:s} ({:})'.format(f2, e))
-                            status = 1
-                            f2skip += 1
                         except IndexError:
                             # if there are no more files, leave flag values on the first file as UNKNOWN (2)
                             # set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                             summary[testvar]['unknown_profiles'] += 1
                             continue
+
+                        try:
+                            with xr.open_dataset(f2) as ds2:
+                                ds2 = ds2.load()
+                        except OSError as e:
+                            logging.error('Error reading file {:s} ({:})'.format(f2, e))
+                            status = 1
+                            f2skip += 1
 
                         try:
                             ds2[testvar]
