@@ -1,5 +1,5 @@
 # rugliderqc
-Test repository for real-time implementation
+Python tools for quality control of real-time and delayed-mode [RUCOOL glider data](https://rucool.marine.rutgers.edu/data/underwater-gliders/).
 
 ## Note: this repository is under development
 
@@ -23,11 +23,12 @@ Test repository for real-time implementation
 
 This wrapper script runs:
 
-1. check_duplicate_timestamps.py
-2. glider_qartod_qc.py
-3. ctd_hysteresis_test.py
-4. <summarize_qc_flags - not written yet>
-5. move_nc_files.py
+1. check_science_variables.py
+2. check_duplicate_timestamps.py
+3. glider_qartod_qc.py
+4. ctd_hysteresis_test.py
+5. <summarize_qc_flags - not written yet>
+6. move_nc_files.py
 
 ## Acknowledgements
 
