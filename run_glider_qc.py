@@ -56,7 +56,8 @@ parsed_args = arg_parser.parse_args()
 # check for severely-lagged CTD profile pairs
 # scripts.ctd_hysteresis_test.main(parsed_args)
 
-# TODO summarize the QC flags
+# summarize QARTOD flags
+# scripts.summarize_qartod_flags.main(parsed_args)
 
 # move the files to the parent directory to be sent to ERDDAP
 scripts.move_nc_files.main(parsed_args)

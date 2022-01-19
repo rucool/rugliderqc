@@ -27,7 +27,7 @@ This wrapper script runs:
 2. check_duplicate_timestamps.py
 3. glider_qartod_qc.py
 4. ctd_hysteresis_test.py
-5. <summarize_qc_flags - not written yet>
+5. summarize_qartod_flags.py
 6. move_nc_files.py
 
 ## Acknowledgements
