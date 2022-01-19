@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 12/17/2021
+Last modified: lgarzio on 1/18/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -260,7 +260,7 @@ def main(args):
                     ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                 # Add QC variable to the original dataset
-                da = xr.DataArray(flag_vals, coords=ds[sensor].coords, dims=ds[sensor].dims,
+                da = xr.DataArray(flag_vals.astype('uint8'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname, attrs=attrs)
                 ds[qc_varname] = da
 
@@ -402,7 +402,7 @@ def main(args):
                             ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                         # Add QC variable to the original dataset
-                        da = xr.DataArray(flag_vals, coords=ds[sensor].coords, dims=ds[sensor].dims,
+                        da = xr.DataArray(flag_vals.astype('uint8'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname, attrs=attrs)
                         ds[qc_varname] = da
 
