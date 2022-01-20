@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 1/18/2022
+Last modified: lgarzio on 1/20/2022
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -21,7 +21,8 @@ def set_summary_qartod_attrs(sensor, ancillary_variables):
     """
     Define the QARTOD QC summary flag attributes
     :param sensor: sensor variable name (e.g. conductivity)
-    :param ancillary_variables: variables included in the summary flag
+    :param ancillary_variables: variables included in the summary flag, format is a string attribute whose values
+    are blank separated
     """
 
     flag_meanings = 'GOOD UNKNOWN SUSPECT FAIL MISSING'
@@ -120,13 +121,19 @@ def main(args):
                     # check if any flags are zero and turn those back to 2 (UNKNOWN)
                     summary_flag[summary_flag == 0] = 2
 
-                    varname = f'{sensor}_qartod_summary_quality_flag'
-                    attrs = set_summary_qartod_attrs(sensor, sensor_qartod_vars)
+                    qc_varname = f'{sensor}_qartod_summary_flag'
+                    attrs = set_summary_qartod_attrs(sensor, ' '.join(sensor_qartod_vars))
 
                     # add summary variable to the original dataset
-                    da = xr.DataArray(summary_flag.astype('uint8'), coords=ds[sensor].coords, dims=ds[sensor].dims, name=varname,
-                                      attrs=attrs)
-                    ds[varname] = da
+                    da = xr.DataArray(summary_flag.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
+                                      name=qc_varname, attrs=attrs)
+                    ds[qc_varname] = da
+
+                    # add the summary variable to the sensor ancillary_variables
+                    if not hasattr(ds[sensor], 'ancillary_variables'):
+                        ds[sensor].attrs['ancillary_variables'] = qc_varname
+                    else:
+                        ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                 ds.to_netcdf(f)
         return status
