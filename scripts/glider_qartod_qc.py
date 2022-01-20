@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 1/18/2022
+Last modified: lgarzio on 1/20/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -254,14 +254,14 @@ def main(args):
                 attrs = set_qartod_attrs(test, sensor, cinfo)
                 attrs['comment'] = 'Glider depth rating (m) in flag_configurations converted to pressure (dbar) from ' \
                                    'pressure and profile_lat using gsw.p_from_z'
-                if not hasattr(ds[sensor],'ancillary_variables'):
+                if not hasattr(ds[sensor], 'ancillary_variables'):
                     ds[sensor].attrs['ancillary_variables'] = qc_varname
                 else:
                     ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                 # Add QC variable to the original dataset
-                da = xr.DataArray(flag_vals.astype('uint8'), coords=ds[sensor].coords, dims=ds[sensor].dims,
-                                          name=qc_varname, attrs=attrs)
+                da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
+                                  name=qc_varname, attrs=attrs)
                 ds[qc_varname] = da
 
                 # Find the configuration files for the climatology, spike, rate of change, and pressure tests
@@ -402,7 +402,7 @@ def main(args):
                             ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                         # Add QC variable to the original dataset
-                        da = xr.DataArray(flag_vals.astype('uint8'), coords=ds[sensor].coords, dims=ds[sensor].dims,
+                        da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname, attrs=attrs)
                         ds[qc_varname] = da
 
