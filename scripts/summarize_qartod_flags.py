@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 1/20/2022
+Last modified: lgarzio on 1/21/2022
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -111,7 +111,8 @@ def main(args):
                     summary_flag[:] = 0
                     sensor_qartod_vars = [x for x in ds.data_vars if f'{sensor}_qartod_' in x]
                     for sqv in sensor_qartod_vars:
-                        flag = ds[sqv].values
+                        # make a copy of the flags so the original array isn't changed
+                        flag = ds[sqv].values.copy()
 
                         # turn 2/UNKNOWN to -1
                         flag[flag == 2] = 0
