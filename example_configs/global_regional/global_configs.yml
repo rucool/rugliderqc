@@ -40,7 +40,7 @@ contexts:
                         suspect_span: [15, 40]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.015
+                        suspect_threshold: 0.01
                         fail_threshold: 0.2
                     rate_of_change_test: 
                         threshold: 0.2

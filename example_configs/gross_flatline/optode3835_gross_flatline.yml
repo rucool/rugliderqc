@@ -1,0 +1,18 @@
+oxygen_concentration:
+    qartod:
+        gross_range_test:
+            suspect_span:
+            fail_span: [0, 500]
+        flat_line_test:
+            tolerance: 1
+            suspect_threshold: 10
+            fail_threshold: 30
+oxygen_saturation:
+    qartod:
+        gross_range_test:
+            suspect_span:
+            fail_span: [0, 120]
+        flat_line_test:
+            tolerance: 0.4
+            suspect_threshold: 10
+            fail_threshold: 30
