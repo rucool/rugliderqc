@@ -40,10 +40,10 @@ contexts:
                         suspect_span: [28, 37]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.01
+                        suspect_threshold: 0.05
                         fail_threshold: 0.2
                     rate_of_change_test: 
-                        threshold: 0.2
+                        threshold: 0.5
             density:
                 qartod:
                     climatology_test:
@@ -53,7 +53,7 @@ contexts:
                         suspect_threshold: 0.025
                         fail_threshold: 0.3
                     rate_of_change_test: 
-                        threshold: 0.3
+                        threshold: 0.5
     -   priority: 1
         region: mab
         window:
@@ -95,10 +95,10 @@ contexts:
                         suspect_span: [30, 37]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.005
-                        fail_threshold: 0.05
+                        suspect_threshold: 0.025
+                        fail_threshold: 0.1
                     rate_of_change_test: 
-                        threshold: 0.05
+                        threshold: 0.2
             density:
                 qartod:
                     climatology_test:
@@ -108,7 +108,7 @@ contexts:
                         suspect_threshold: 0.005
                         fail_threshold: 0.15
                     rate_of_change_test: 
-                        threshold: 0.15
+                        threshold: 0.3
     -   priority: 3
         region: mab
         window:
@@ -150,7 +150,7 @@ contexts:
                         suspect_span: [15, 40]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.01
+                        suspect_threshold: 0.025
                         fail_threshold: 0.2
                     rate_of_change_test: 
                         threshold: 0.2

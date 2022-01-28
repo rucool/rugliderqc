@@ -53,7 +53,7 @@ contexts:
                         suspect_threshold: 0.025
                         fail_threshold: 0.3
                     rate_of_change_test: 
-                        threshold: 0.3
+                        threshold: 0.5
             oxygen_concentration:
                 qartod:
                     climatology_test:
