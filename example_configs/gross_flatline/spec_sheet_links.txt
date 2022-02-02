@@ -1,0 +1,3 @@
+sea-bird_ctd: https://www.seabird.com/glider-payload-ctd-gpctd/product-downloads?id=60762467712, https://www.seabird.com/asset-get.download.jsa?id=54627862520
+optode3835: https://www.aanderaa.com/media/pdfs/Oxygen-Optode-3835-4130-4175.pdf
+optode4831: https://www.aanderaa.com/media/pdfs/d403_aanderaa_oxygen_sensor_4831_4831f.pdf
