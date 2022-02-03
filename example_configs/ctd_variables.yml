@@ -1,0 +1,20 @@
+ctd_variables:
+    conductivity: conductivity
+    temperature: temperature
+    salinity: salinity
+    density: density
+ctd_variables2:
+    conductivity: conductivity2
+    temperature: temperature2
+    salinity: salinity2
+    density: density2
+rbr_variables:
+    conductivity: rbr_conductivity
+    temperature: rbr_temperature
+    salinity: rbr_salinity
+    density: rbr_density
+variables_rbr:
+    conductivity: conductivity_rbr
+    temperature: temperature_rbr
+    salinity: salinity_rbr
+    density: density_rbr
