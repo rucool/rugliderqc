@@ -2,9 +2,10 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 12/22/2021
+Last modified: lgarzio on 2/22/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
-doesn't contain any of those variables, or only contains pressure.
+doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
+if conductivity and temperature are both 0.000.
 """
 
 import os
@@ -12,8 +13,10 @@ import argparse
 import sys
 import glob
 import xarray as xr
+import numpy as np
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
+from ioos_qc.utils import load_config_as_dict as loadconfig
 
 
 def main(args):
@@ -30,6 +33,12 @@ def main(args):
 
     data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
+
+        # Set the default qc configuration path
+        qc_config_root = os.path.join(data_home, 'qc', 'config')
+        if not os.path.isdir(qc_config_root):
+            logging_base.warning('Invalid QC config root: {:s}'.format(qc_config_root))
+            return 1
 
         for deployment in args.deployments:
 
@@ -50,6 +59,15 @@ def main(args):
 
             logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
+            # Get all of the possible CTD variable names from the config file
+            config_file = os.path.join(qc_config_root, 'ctd_variables.yml')
+            if not os.path.isfile(config_file):
+                logging.error('Invalid CTD variable name config file: {:s}.'.format(config_file))
+                status = 1
+                continue
+
+            ctd_vars = loadconfig(config_file)
+
             # List the netcdf files in qc_queue
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
 
@@ -64,9 +82,12 @@ def main(args):
 
             # Iterate through files and find duplicated timestamps
             summary = 0
+            zeros_removed = 0
             for f in ncfiles:
+                modified = 0
                 try:
-                    ds = xr.open_dataset(f)
+                    with xr.open_dataset(f) as ds:
+                        ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
                     status = 1
@@ -88,7 +109,30 @@ def main(args):
                         logging.info('Temperature and/or conductivity not found in file: {:s}'.format(f))
                         summary += 1
 
+                    # Set CTD values to fill values where conductivity and temperature both = 0.00
+                    # Try all versions of CTD variable names
+                    for key, variables in ctd_vars.items():
+                        try:
+                            ds[variables['conductivity']]
+                        except KeyError:
+                            continue
+
+                        cond_zero_idx = np.where(ds[variables['conductivity']] == 0.0000)[0]
+                        if len(cond_zero_idx) > 0:
+                            temp_zero_idx = np.where(ds[variables['temperature']] == 0.0000)[0]
+                            intersect_idx = np.intersect1d(cond_zero_idx, temp_zero_idx)
+                            if len(intersect_idx) > 0:
+                                for cv, varname in variables.items():
+                                    ds[varname][intersect_idx] = ds[varname].encoding['_FillValue']
+                                    modified += 1
+
+                # if the file was modified, save the file and add to the summary
+                if modified > 0:
+                    ds.to_netcdf(f)
+                    zeros_removed += 1
+
             logging.info('Found {:} files without CTD science variables (of {:} total files)'.format(summary, len(ncfiles)))
+            logging.info('Removed 0.00 values (Teledyne fill values) for CTD variables in {:} files (of {:} total files)'.format(zeros_removed, len(ncfiles)))
         return status
 
 
