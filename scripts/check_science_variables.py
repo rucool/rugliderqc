@@ -2,10 +2,11 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 2/22/2022
+Last modified: lgarzio on 2/3/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
 doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
-if conductivity and temperature are both 0.000.
+if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
+oxygen_concentration and optode_water_temperature are both 0.000.
 """
 
 import os
@@ -17,6 +18,35 @@ import numpy as np
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
+
+
+def check_zeros(varname_dict, dataset, ds_modified, var1, var2):
+    """
+    Find indices where values for 2 variables are 0.0000 and convert all defined variables to fill values
+    :param varname_dict: dictionary containing variables to modify if condition is met
+    :param dataset: xarray dataset
+    :param ds_modified: int value indicating if the dataset was modified
+    :param var1: first variable name to test for condition (e.g. 'conductivity' or 'oxygen_concentration')
+    :param var2: second variable name to test for condition (e.g. 'temperature' or 'optode_water_temperature')
+    returns int value indicating if the dataset was modified
+    """
+    for key, variables in varname_dict.items():
+        try:
+            check_var1 = dataset[variables[var1]]
+            check_var2 = dataset[variables[var2]]
+        except KeyError:
+            continue
+
+        var1_zero_idx = np.where(check_var1 == 0.0000)[0]
+        if len(var1_zero_idx) > 0:
+            var2_zero_idx = np.where(check_var2 == 0.0000)[0]
+            dointersect_idx = np.intersect1d(var1_zero_idx, var2_zero_idx)
+            if len(dointersect_idx) > 0:
+                for cv, varname in variables.items():
+                    dataset[varname][dointersect_idx] = dataset[varname].encoding['_FillValue']
+                    ds_modified += 1
+
+    return ds_modified
 
 
 def main(args):
@@ -60,13 +90,22 @@ def main(args):
             logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get all of the possible CTD variable names from the config file
-            config_file = os.path.join(qc_config_root, 'ctd_variables.yml')
-            if not os.path.isfile(config_file):
-                logging.error('Invalid CTD variable name config file: {:s}.'.format(config_file))
+            ctd_config_file = os.path.join(qc_config_root, 'ctd_variables.yml')
+            if not os.path.isfile(ctd_config_file):
+                logging.error('Invalid CTD variable name config file: {:s}.'.format(ctd_config_file))
                 status = 1
                 continue
 
-            ctd_vars = loadconfig(config_file)
+            ctd_vars = loadconfig(ctd_config_file)
+
+            # Get dissolved oxygen variable names
+            oxygen_config_file = os.path.join(qc_config_root, 'oxygen_variables.yml')
+            if not os.path.isfile(oxygen_config_file):
+                logging.error('Invalid DO variable name config file: {:s}.'.format(oxygen_config_file))
+                status = 1
+                continue
+
+            oxygen_vars = loadconfig(oxygen_config_file)
 
             # List the netcdf files in qc_queue
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
@@ -111,20 +150,10 @@ def main(args):
 
                     # Set CTD values to fill values where conductivity and temperature both = 0.00
                     # Try all versions of CTD variable names
-                    for key, variables in ctd_vars.items():
-                        try:
-                            ds[variables['conductivity']]
-                        except KeyError:
-                            continue
+                    modified = check_zeros(ctd_vars, ds, modified, 'conductivity', 'temperature')
 
-                        cond_zero_idx = np.where(ds[variables['conductivity']] == 0.0000)[0]
-                        if len(cond_zero_idx) > 0:
-                            temp_zero_idx = np.where(ds[variables['temperature']] == 0.0000)[0]
-                            intersect_idx = np.intersect1d(cond_zero_idx, temp_zero_idx)
-                            if len(intersect_idx) > 0:
-                                for cv, varname in variables.items():
-                                    ds[varname][intersect_idx] = ds[varname].encoding['_FillValue']
-                                    modified += 1
+                    # Set DO values to fill values where oxygen_concentration and oxygen_saturation both = 0.00
+                    modified = check_zeros(oxygen_vars, ds, modified, 'oxygen_concentration', 'optode_water_temperature')
 
                 # if the file was modified, save the file and add to the summary
                 if modified > 0:
@@ -132,7 +161,8 @@ def main(args):
                     zeros_removed += 1
 
             logging.info('Found {:} files without CTD science variables (of {:} total files)'.format(summary, len(ncfiles)))
-            logging.info('Removed 0.00 values (Teledyne fill values) for CTD variables in {:} files (of {:} total files)'.format(zeros_removed, len(ncfiles)))
+            logging.info('Removed 0.00 values (Teledyne fill values) for CTD and/or DO variables in {:} files (of {:} '
+                         'total files)'.format(zeros_removed, len(ncfiles)))
         return status
 
 
