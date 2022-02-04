@@ -1,0 +1,4 @@
+oxygen_variables:
+    oxygen_concentration: oxygen_concentration
+    oxygen_saturation: oxygen_saturation
+    optode_water_temperature: optode_water_temperature
