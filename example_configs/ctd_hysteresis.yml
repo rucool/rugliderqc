@@ -1,6 +1,8 @@
 conductivity_hysteresis_test:
     suspect_threshold: .1
     fail_threshold: .2
+    test_threshold: .05
 temperature_hysteresis_test:
     suspect_threshold: .1
     fail_threshold: .2
+    test_threshold: .1
