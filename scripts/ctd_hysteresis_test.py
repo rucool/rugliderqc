@@ -323,6 +323,8 @@ def main(args):
                                             flag_vals[data_idx] = flag
                                             flag_vals2[data_idx2] = flag
                                         else:
+                                            # if data range is < test_threshold, set flags to 1 (GOOD) since
+                                            # there will be no measureable hysteresis (usually in well-mixed water)
                                             flag = qartod.QartodFlags.GOOD
                                             flag_vals[data_idx] = flag
                                             flag_vals2[data_idx2] = flag
