@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 12/21/2021
+Last modified: lgarzio on 2/5/2022
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -286,42 +286,48 @@ def main(args):
                                     df = df.append(df2)
                                     df = df.dropna(subset=['pressure', testvar])
 
-                                    # If the profile depth range is >5 dbar, run the test. Otherwise leave flags UNKNOWN (2)
-                                    # since hysteresis can't be determined with a profile that doesn't span a substantial
-                                    # depth range (e.g. usually hovering at the surface or bottom)
-
                                     # convert negative pressure values to 0
                                     pressure_copy = df.pressure.values.copy()
                                     pressure_copy[pressure_copy < 0] = 0
                                     pressure_range = (np.nanmax(pressure_copy) - np.nanmin(pressure_copy))
+                                    data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
+
+                                    # If the profile depth range is >5 dbar and the data range is >test_threshold,
+                                    # run the test. If profile depth is <5 dbar leave flags UNKNOWN (2) since
+                                    # hysteresis can't be calculated with a profile that doesn't span a substantial
+                                    # depth range (e.g. usually hovering at the surface or bottom)
                                     if pressure_range > 5:
-                                        polygon_points = df.values.tolist()
-                                        polygon_points.append(polygon_points[0])
-                                        polygon = Polygon(polygon_points)
-                                        polygon_lines = polygon.exterior
-                                        polygon_crossovers = polygon_lines.intersection(polygon_lines)
-                                        polygons = polygonize(polygon_crossovers)
-                                        valid_polygons = MultiPolygon(polygons)
+                                        if data_range > hysteresis_thresholds['test_threshold']:
+                                            polygon_points = df.values.tolist()
+                                            polygon_points.append(polygon_points[0])
+                                            polygon = Polygon(polygon_points)
+                                            polygon_lines = polygon.exterior
+                                            polygon_crossovers = polygon_lines.intersection(polygon_lines)
+                                            polygons = polygonize(polygon_crossovers)
+                                            valid_polygons = MultiPolygon(polygons)
 
-                                        # normalize area between the profiles to the pressure range
-                                        area = valid_polygons.area / pressure_range
-                                        data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
+                                            # normalize area between the profiles to the pressure range
+                                            area = valid_polygons.area / pressure_range
 
-                                        # Flag failed profiles
-                                        if area > data_range * hysteresis_thresholds['fail_threshold']:
-                                            flag = qartod.QartodFlags.FAIL
-                                            summary[testvar]['failed_profiles'] += 2
-                                        # Flag suspect profiles
-                                        elif area > data_range * hysteresis_thresholds['suspect_threshold']:
-                                            flag = qartod.QartodFlags.SUSPECT
-                                            summary[testvar]['suspect_profiles'] += 2
-                                        # Otherwise, both profiles are good
+                                            # Flag failed profiles
+                                            if area > data_range * hysteresis_thresholds['fail_threshold']:
+                                                flag = qartod.QartodFlags.FAIL
+                                                summary[testvar]['failed_profiles'] += 2
+                                            # Flag suspect profiles
+                                            elif area > data_range * hysteresis_thresholds['suspect_threshold']:
+                                                flag = qartod.QartodFlags.SUSPECT
+                                                summary[testvar]['suspect_profiles'] += 2
+                                            # Otherwise, both profiles are good
+                                            else:
+                                                flag = qartod.QartodFlags.GOOD
+                                            flag_vals[data_idx] = flag
+                                            flag_vals2[data_idx2] = flag
                                         else:
                                             flag = qartod.QartodFlags.GOOD
-                                        flag_vals[data_idx] = flag
-                                        flag_vals2[data_idx2] = flag
+                                            flag_vals[data_idx] = flag
+                                            flag_vals2[data_idx2] = flag
 
-                                    # save both .nc files with hysteresis flag applied
+                                    # save .nc files with hysteresis flag applied
                                     # (or flag values = UNKNOWN (2) if the profile depth range is <5 dbar)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
