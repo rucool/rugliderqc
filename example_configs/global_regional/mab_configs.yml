@@ -128,7 +128,7 @@ contexts:
             temperature:
                 qartod:
                     climatology_test:
-                        suspect_span: [4, 27]
+                        suspect_span: [3, 27]
                         fail_span:
                     spike_test: 
                         suspect_threshold: 0.06
