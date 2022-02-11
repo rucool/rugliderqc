@@ -40,7 +40,7 @@ contexts:
                         suspect_span: [28, 37]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.05
+                        suspect_threshold: 0.025
                         fail_threshold: 0.2
                     rate_of_change_test: 
                         threshold: 0.5
@@ -95,7 +95,7 @@ contexts:
                         suspect_span: [29, 37]
                         fail_span:
                     spike_test: 
-                        suspect_threshold: 0.025
+                        suspect_threshold: 0.01
                         fail_threshold: 0.1
                     rate_of_change_test: 
                         threshold: 0.2
