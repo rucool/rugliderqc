@@ -777,7 +777,7 @@ def flat_line_test(inp: Sequence[N],
         for ni in np.arange(n_fill):
             if np.isnan(inp[ni]):
                 continue
-            if np.nanmax(inp[:ni+1]) - np.nanmin(inp[:ni+1]) < tolerance:
+            if np.logical_and(np.nanmax(inp[:ni+1]) - np.nanmin(inp[:ni+1]) < tolerance, flag_arr[ni]==QartodFlags.GOOD):
                 test_results[ni] = True
             else:
                 break
