@@ -92,7 +92,7 @@ contexts:
             salinity:
                 qartod:
                     climatology_test:
-                        suspect_span: [30, 37]
+                        suspect_span: [29, 37]
                         fail_span:
                     spike_test: 
                         suspect_threshold: 0.025
