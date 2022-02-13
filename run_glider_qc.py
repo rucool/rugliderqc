@@ -45,19 +45,19 @@ arg_parser.add_argument('-test', '--test',
 parsed_args = arg_parser.parse_args()
 
 # check for files that are missing CTD science variables
-# scripts.check_science_variables.main(parsed_args)
+scripts.check_science_variables.main(parsed_args)
 
 # check files that have duplicate timestamps
-# scripts.check_duplicate_timestamps.main(parsed_args)
+scripts.check_duplicate_timestamps.main(parsed_args)
 
 # apply QARTOD QC
-# scripts.glider_qartod_qc.main(parsed_args)
+scripts.glider_qartod_qc.main(parsed_args)
 
 # check for severely-lagged CTD profile pairs
-# scripts.ctd_hysteresis_test.main(parsed_args)
+scripts.ctd_hysteresis_test.main(parsed_args)
 
 # summarize QARTOD flags
-# scripts.summarize_qartod_flags.main(parsed_args)
+scripts.summarize_qartod_flags.main(parsed_args)
 
 # move the files to the parent directory to be sent to ERDDAP
 scripts.move_nc_files.main(parsed_args)
