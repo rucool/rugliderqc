@@ -118,7 +118,7 @@ contexts:
             conductivity:
                 qartod:
                     climatology_test:
-                        suspect_span: [3, 5.5]
+                        suspect_span: [2.9, 5.5]
                         fail_span:
                     spike_test: 
                         suspect_threshold: 0.005
