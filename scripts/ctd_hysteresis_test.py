@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 2/5/2022
+Last modified: lgarzio on 2/18/2022
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -31,7 +31,7 @@ def apply_qartod_qc(dataset, varname):
 
 
 def initialize_flags(dataset, varname):
-    # start with flag values UNKNOWN (2)
+    # start with flag values NOT_EVALUATED/UNKNOWN (2)
     flags = 2 * np.ones(np.shape(dataset[varname].values))
 
     # identify where not nan
@@ -67,7 +67,7 @@ def set_hysteresis_attrs(test, sensor, thresholds=None):
     """
     thresholds = thresholds or None
 
-    flag_meanings = 'GOOD UNKNOWN SUSPECT FAIL MISSING'
+    flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
     standard_name = f'{test}_quality_flag'
     if 'ctd' in test:
@@ -170,7 +170,7 @@ def main(args):
                 summary[tv] = dict()
                 summary[tv]['failed_profiles'] = 0
                 summary[tv]['suspect_profiles'] = 0
-                summary[tv]['unknown_profiles'] = 0
+                summary[tv]['not_evaluated_profiles'] = 0
 
             # Iterate through files
             skip = 0
@@ -226,17 +226,17 @@ def main(args):
                     # determine if profile is up or down
                     if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
-                        # leave flag values as UNKNOWN (2), set the attributes and save the .nc file
+                        # leave flag values as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the .nc file
                         save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                        summary[testvar]['unknown_profiles'] += 1
+                        summary[testvar]['not_evaluated_profiles'] += 1
                     else:  # first profile is down, check the next file
                         try:
                             f2 = ncfiles[i + 1]
                         except IndexError:
-                            # if there are no more files, leave flag values on the first file as UNKNOWN (2)
+                            # if there are no more files, leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2)
                             # set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            summary[testvar]['unknown_profiles'] += 1
+                            summary[testvar]['not_evaluated_profiles'] += 1
                             continue
 
                         try:
@@ -253,9 +253,9 @@ def main(args):
                             logging.error('{:s} not found in file {:s})'.format(testvar, f2))
                             status = 1
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
-                            # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
+                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the first .nc file
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            summary[testvar]['unknown_profiles'] += 1
+                            summary[testvar]['not_evaluated_profiles'] += 1
                             continue
 
                         data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
@@ -263,10 +263,10 @@ def main(args):
                         # determine if second profile is up or down
                         if ds2.pressure.values[pressure_idx2][0] < ds2.pressure.values[pressure_idx2][-1]:
                             # if second profile is also down, test can't be run on the first file
-                            # leave flag values on the first file as UNKNOWN (2), set the attributes and save the first .nc file
+                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the first .nc file
                             # but don't skip because this second file will now be the first file in the next loop
                             save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                            summary[testvar]['unknown_profiles'] += 1
+                            summary[testvar]['not_evaluated_profiles'] += 1
                         else:
                             # first profile is down and second profile is up
                             # determine if the end/start timestamps are < 5 minutes apart,
@@ -278,7 +278,7 @@ def main(args):
                                 data_copy2 = apply_qartod_qc(ds2, testvar)
 
                                 # both yos must have data remaining after QARTOD flags are applied,
-                                # otherwise, test can't be run and leave the flag values as UNKNOWN (2)
+                                # otherwise, test can't be run and leave the flag values as NOT_EVALUATED/UNKNOWN (2)
                                 if np.logical_and(np.sum(~np.isnan(data_copy)) > 0, np.sum(~np.isnan(data_copy2)) > 0):
                                     # calculate the area between the two profiles
                                     df = data_copy.to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
@@ -293,7 +293,7 @@ def main(args):
                                     data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
 
                                     # If the profile depth range is >5 dbar and the data range is >test_threshold,
-                                    # run the test. If profile depth is <5 dbar leave flags UNKNOWN (2) since
+                                    # run the test. If profile depth is <5 dbar leave flags NOT_EVALUATED/UNKNOWN (2) since
                                     # hysteresis can't be calculated with a profile that doesn't span a substantial
                                     # depth range (e.g. usually hovering at the surface or bottom)
                                     if pressure_range > 5:
@@ -330,32 +330,32 @@ def main(args):
                                             flag_vals2[data_idx2] = flag
 
                                     # save .nc files with hysteresis flag applied
-                                    # (or flag values = UNKNOWN (2) if the profile depth range is <5 dbar)
+                                    # (or flag values = NOT_EVALUATED/UNKNOWN (2) if the profile depth range is <5 dbar)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
                                     if 2. in flag_vals:
-                                        summary[testvar]['unknown_profiles'] += 2
+                                        summary[testvar]['not_evaluated_profiles'] += 2
                                     f2skip += 1
 
                                 else:
-                                    # if there is no data left after QARTOD tests are applied, leave flag values UNKNOWN (2)
+                                    # if there is no data left after QARTOD tests are applied, leave flag values NOT_EVALUATED/UNKNOWN (2)
                                     save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                     save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
-                                    summary[testvar]['unknown_profiles'] += 2
+                                    summary[testvar]['not_evaluated_profiles'] += 2
                                     f2skip += 1
                             else:
                                 # if timestamps are too far apart they're likely not from the same profile pair
-                                # leave flag values as UNKNOWN (2), set the attributes and save the .nc files
+                                # leave flag values as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the .nc files
                                 save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
                                 save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
-                                summary[testvar]['unknown_profiles'] += 2
+                                summary[testvar]['not_evaluated_profiles'] += 2
                                 f2skip += 1
 
             for tv in test_varnames:
                 tvs = summary[tv]
-                logging.info('{:s}: {:} unknown profiles found (of {:} total profiles)'.format(tv,
-                                                                                               tvs['unknown_profiles'],
-                                                                                               len(ncfiles)))
+                logging.info('{:s}: {:} not evaluated profiles found (of {:} total profiles)'.format(tv,
+                                                                                                     tvs['not_evaluated_profiles'],
+                                                                                                     len(ncfiles)))
                 logging.info('{:s}: {:} suspect profiles found (of {:} total profiles)'.format(tv,
                                                                                                tvs['suspect_profiles'],
                                                                                                len(ncfiles)))

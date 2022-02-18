@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 1/20/2022
+Last modified: lgarzio on 2/18/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -104,7 +104,7 @@ def set_qartod_attrs(test, sensor, thresholds):
     :param thresholds: flag thresholds from QC configuration files
     """
 
-    flag_meanings = 'GOOD UNKNOWN SUSPECT FAIL MISSING'
+    flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
     standard_name = f'{test}_quality_flag'  # 'flat_line_test_quality_flag'
     long_name = f'{" ".join([x.capitalize() for x in test.split("_")])} Quality Flag'
@@ -380,7 +380,7 @@ def main(args):
                                 flag_vals[non_nan_ind] = qartod.spike_test(inp=data[non_nan_ind],
                                                                            method='differential',
                                                                            **spike_settings)
-                                # flag as unknown on either end of long time gap
+                                # flag as not evaluated/unknown on either end of long time gap
                                 flag_vals[tdiff_long_i] = qartod.QartodFlags.UNKNOWN
 
                         elif test == 'rate_of_change_test':
@@ -415,6 +415,13 @@ def main(args):
 
 
 if __name__ == '__main__':
+    # deploy = 'ru34-20220113T1949'  # maracoos_02-20210716T1814 ru34-20200729T1430 ru33-20201014T1746 ru33-20200715T1558  ru32-20190102T1317 ru30-20210503T1929
+    # mode = 'rt'
+    # d = 'profile'
+    # ll = 'info'
+    # level = 'sci'
+    # test = True
+    # main(deploy, mode, d, ll, level, test)
     arg_parser = argparse.ArgumentParser(description=main.__doc__,
                                          formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 

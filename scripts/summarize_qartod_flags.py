@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 1/21/2022
+Last modified: lgarzio on 2/18/2022
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -25,7 +25,7 @@ def set_summary_qartod_attrs(sensor, ancillary_variables):
     are blank separated
     """
 
-    flag_meanings = 'GOOD UNKNOWN SUSPECT FAIL MISSING'
+    flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
     standard_name = 'qartod_summary_quality_flag'
     long_name = 'QARTOD Summary Quality Flag'
@@ -41,7 +41,7 @@ def set_summary_qartod_attrs(sensor, ancillary_variables):
         'valid_max': np.byte(max(flag_values)),
         'ioos_qc_module': 'qartod',
         'ioos_qc_target': sensor,
-        'comment': f'Summary of the highest QARTOD flag value for all QARTOD tests for {sensor} (excluding 2/UNKNOWN).'
+        'comment': f'Summary of the highest QARTOD flag value for all QARTOD tests for {sensor} (excluding 2/NOT_EVALUATED).'
     }
 
     return attrs
@@ -114,12 +114,12 @@ def main(args):
                         # make a copy of the flags so the original array isn't changed
                         flag = ds[sqv].values.copy()
 
-                        # turn 2/UNKNOWN to -1
+                        # turn 2/NOT_EVALUATED/UNKNOWN to -1
                         flag[flag == 2] = 0
 
                         summary_flag = np.maximum(summary_flag, flag)
 
-                    # check if any flags are zero and turn those back to 2 (UNKNOWN)
+                    # check if any flags are zero and turn those back to 2 (NOT_EVALUATED/UNKNOWN)
                     summary_flag[summary_flag == 0] = 2
 
                     qc_varname = f'{sensor}_qartod_summary_flag'
