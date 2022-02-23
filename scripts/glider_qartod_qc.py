@@ -86,7 +86,7 @@ def define_gross_flatline_config(instrument_name, model_name):
     :param instrument_name: instrument name (e.g. instrument_ctd, instrument_optode)
     :param model_name: instrument make-model
     """
-    if instrument_name == 'instrument_ctd':
+    if 'instrument_ctd' in instrument_name:
         config_filename = f'{model_name.split(" ")[0].lower()}_ctd_gross_flatline.yml'
     elif instrument_name == 'instrument_optode':
         config_filename = f'optode{model_name.split(" ")[-1].lower()}_gross_flatline.yml'
