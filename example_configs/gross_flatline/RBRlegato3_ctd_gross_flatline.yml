@@ -1,0 +1,34 @@
+conductivity:
+    qartod:
+        gross_range_test:
+            fail_span: [0, 9]
+        flat_line_test:
+            tolerance: 0.001
+            suspect_threshold: 120
+            fail_threshold: 300
+temperature:
+    qartod:
+        gross_range_test:
+            fail_span: [-5, 42]
+        flat_line_test:
+            tolerance: 0.00005
+            suspect_threshold: 120
+            fail_threshold: 300
+pressure:
+    qartod:
+        flat_line_test:
+            tolerance: 0.001
+            suspect_threshold: 120
+            fail_threshold: 300
+salinity:
+    qartod:
+        flat_line_test:
+            tolerance: 0.001
+            suspect_threshold: 120
+            fail_threshold: 300
+density:
+    qartod:
+        flat_line_test:
+            tolerance: 0.001
+            suspect_threshold: 120
+            fail_threshold: 300
