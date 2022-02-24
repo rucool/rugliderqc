@@ -25,7 +25,7 @@ pressure:
 salinity:
     qartod:
         flat_line_test:
-            tolerance: 0.001
+            tolerance: 0.0001
             suspect_threshold: 120
             fail_threshold: 300
 density:
