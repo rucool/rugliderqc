@@ -266,6 +266,7 @@ def main(args):
 
                 # Find the configuration files for the climatology, spike, rate of change, and pressure tests
                 c = build_global_regional_config(ds, qc_config_root)
+                logging.info('Using configuration file for region: {:s} and time window: {:s} to {:s}'.format(c['region'],c['window']['starting'].strftime("%b-%d"),c['window']['ending'].strftime("%b-%d")))
 
                 # run climatology, spike, rate of change, and pressure tests
                 times = ds.time.values
