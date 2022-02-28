@@ -47,7 +47,7 @@ contexts:
             density:
                 qartod:
                     climatology_test:
-                        suspect_span: [1010, 1030]
+                        suspect_span: [1010, 1032]
                         fail_span:
                     spike_test: 
                         suspect_threshold: 0.025
