@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 2/18/2022
+Last modified: lgarzio on 3/1/2022
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -21,11 +21,29 @@ from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymen
 np.set_printoptions(suppress=True)
 
 
+def append_ancillary_variables(data_array, qc_variable_name):
+    """
+    Add the QC test to the associated ancillary variable attribute
+    :param data_array: xarray data array  (e.g. ds.conductivity)
+    :param qc_variable_name: name of the QC variable to be added to the dataset (e.g. conductivity_hysteresis_test)
+    """
+    if not hasattr(data_array, 'ancillary_variables'):
+        data_array.attrs['ancillary_variables'] = qc_variable_name
+    else:
+        data_array.attrs['ancillary_variables'] = ' '.join((data_array.ancillary_variables, qc_variable_name))
+
+
 def apply_qartod_qc(dataset, varname):
-    # make a copy of the data and apply QARTOD QC flags
+    """
+    Make a copy of a data array and convert values with not_evaluated (2) suspect (3) and fail (4) QC flags to nans
+    :param dataset: xarray dataset
+    :param varname: sensor variable name (e.g. conductivity)
+    """
     datacopy = dataset[varname].copy()
     for qv in [x for x in dataset.data_vars if f'{varname}_qartod' in x]:
-        qv_idx = np.where(np.logical_or(dataset[qv].values == 3, dataset[qv].values == 4))[0]
+        qv_vals = dataset[qv].values
+        qv_idx = np.where(np.logical_or(np.logical_or(qv_vals == 2, qv_vals == 3), qv_vals == 4))[0]
+        #qv_idx = np.where(np.logical_or(dataset[qv].values == 3, dataset[qv].values == 4))[0]
         datacopy[qv_idx] = np.nan
     return datacopy
 
@@ -48,14 +66,18 @@ def initialize_flags(dataset, varname):
     return non_nan_i, press_non_nan_ind, flags
 
 
-def save_ds(dataset, flag_array, attributes, variable_name, save_file, varname):
-    # Add QC variable to the original dataset
-    da = xr.DataArray(flag_array, coords=dataset[varname].coords, dims=dataset[varname].dims,
-                      name=variable_name, attrs=attributes)
-    dataset[variable_name] = da
-
-    # Save the resulting netcdf file with QC variable
-    dataset.to_netcdf(save_file)
+def add_da(dataset, flag_array, attributes, test_varname, qc_variable_name):
+    """
+    Add QC test results to the original dataset
+    :param dataset: xarray dataset
+    :param flag_array: numpy array containing QC results
+    :param attributes: dictionary containing variable attributes
+    :param test_varname: sensor variable name (e.g. conductivity)
+    :param qc_variable_name: name of the QC variable to be added to the dataset (e.g. conductivity_hysteresis_test)
+    """
+    da = xr.DataArray(flag_array.astype('int32'), coords=dataset[test_varname].coords, dims=dataset[test_varname].dims,
+                      name=qc_variable_name, attrs=attributes)
+    dataset[qc_variable_name] = da
 
 
 def set_hysteresis_attrs(test, sensor, thresholds=None):
@@ -63,7 +85,7 @@ def set_hysteresis_attrs(test, sensor, thresholds=None):
     Define the QC variable attributes for the CTD hysteresis test
     :param test: QC test
     :param sensor: sensor variable name (e.g. conductivity)
-    :param thresholds: flag thresholds from QC configuration file
+    :param thresholds: optional flag thresholds from QC configuration file
     """
     thresholds = thresholds or None
 
@@ -184,6 +206,10 @@ def main(args):
 
                 i += skip
 
+                # end the code when all the files have been tested
+                if i == len(ncfiles):
+                    sys.exit()
+
                 try:
                     with xr.open_dataset(ncfiles[i]) as ds:
                         ds = ds.load()
@@ -208,10 +234,6 @@ def main(args):
                         status = 1
                         continue
 
-                    # Find the CTD instrument name
-                    # ctd_instrument = [x for x in ds[testvar].ancillary_variables.split(' ') if 'instrument_ctd' in x][0]
-
-                    # qc_varname = f'{ctd_instrument}_hysteresis_test'
                     qc_varname = f'{testvar}_hysteresis_test'
                     kwargs = dict()
                     kwargs['thresholds'] = hysteresis_thresholds
@@ -223,29 +245,42 @@ def main(args):
                         status = 1
                         continue
 
-                    # determine if profile is up or down
+                    # determine if first profile is up or down
                     if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
-                        # leave flag values as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the .nc file
-                        save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                        # leave flag values as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                        add_da(ds, flag_vals, attrs, testvar, qc_varname)
                         summary[testvar]['not_evaluated_profiles'] += 1
                     else:  # first profile is down, check the next file
                         try:
                             f2 = ncfiles[i + 1]
                         except IndexError:
-                            # if there are no more files, leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2)
-                            # set the attributes and save the first .nc file
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                            # if there are no more files, leave flag values on the first file as
+                            # NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                            add_da(ds, flag_vals, attrs, testvar, qc_varname)
+
+                            # add the hysteresis test to ancillary variable attribute
+                            append_ancillary_variables(ds[testvar], qc_varname)
+
+                            # add the hysteresis test to the salinity and density ancillary variable attribute
+                            for v in ['salinity', 'density']:
+                                append_ancillary_variables(ds[v], qc_varname)
+
                             summary[testvar]['not_evaluated_profiles'] += 1
                             continue
 
                         try:
-                            with xr.open_dataset(f2) as ds2:
-                                ds2 = ds2.load()
-                        except OSError as e:
-                            logging.error('Error reading file {:s} ({:})'.format(f2, e))
-                            status = 1
-                            f2skip += 1
+                            # see if the second file is already open
+                            ds2
+                        except NameError:
+                            # if not, try to open the second file
+                            try:
+                                with xr.open_dataset(f2) as ds2:
+                                    ds2 = ds2.load()
+                            except OSError as e:
+                                logging.error('Error reading file {:s} ({:})'.format(f2, e))
+                                status = 1
+                                f2skip += 1
 
                         try:
                             ds2[testvar]
@@ -253,19 +288,18 @@ def main(args):
                             logging.error('{:s} not found in file {:s})'.format(testvar, f2))
                             status = 1
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
-                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the first .nc file
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                            add_da(ds, flag_vals, attrs, testvar, qc_varname)
                             summary[testvar]['not_evaluated_profiles'] += 1
-                            continue
+                            pass  ## check this
 
                         data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
 
                         # determine if second profile is up or down
                         if ds2.pressure.values[pressure_idx2][0] < ds2.pressure.values[pressure_idx2][-1]:
                             # if second profile is also down, test can't be run on the first file
-                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the first .nc file
-                            # but don't skip because this second file will now be the first file in the next loop
-                            save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
+                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                            add_da(ds, flag_vals, attrs, testvar, qc_varname)
                             summary[testvar]['not_evaluated_profiles'] += 1
                         else:
                             # first profile is down and second profile is up
@@ -273,7 +307,7 @@ def main(args):
                             # indicating a paired yo (down-up profile pair)
                             if ds2.time.values[0] - ds.time.values[-1] < np.timedelta64(5, 'm'):
 
-                                # make a copy of the data and apply QARTOD QC flags
+                                # make a copy of the data and apply QARTOD QC flags before testing for hysteresis
                                 data_copy = apply_qartod_qc(ds, testvar)
                                 data_copy2 = apply_qartod_qc(ds2, testvar)
 
@@ -293,9 +327,9 @@ def main(args):
                                     data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
 
                                     # If the profile depth range is >5 dbar and the data range is >test_threshold,
-                                    # run the test. If profile depth is <5 dbar leave flags NOT_EVALUATED/UNKNOWN (2) since
-                                    # hysteresis can't be calculated with a profile that doesn't span a substantial
-                                    # depth range (e.g. usually hovering at the surface or bottom)
+                                    # run the test. If profile depth is <5 dbar leave flags NOT_EVALUATED/UNKNOWN (2)
+                                    # since hysteresis can't be calculated with a profile that doesn't span a
+                                    # substantial depth range (e.g. usually hovering at the surface or bottom)
                                     if pressure_range > 5:
                                         if data_range > hysteresis_thresholds['test_threshold']:
                                             polygon_points = df.values.tolist()
@@ -329,27 +363,54 @@ def main(args):
                                             flag_vals[data_idx] = flag
                                             flag_vals2[data_idx2] = flag
 
-                                    # save .nc files with hysteresis flag applied
+                                    # add data array with hysteresis flag applied
                                     # (or flag values = NOT_EVALUATED/UNKNOWN (2) if the profile depth range is <5 dbar)
-                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
+                                    add_da(ds, flag_vals, attrs, testvar, qc_varname)
+                                    add_da(ds2, flag_vals2, attrs, testvar, qc_varname)
                                     if 2. in flag_vals:
                                         summary[testvar]['not_evaluated_profiles'] += 2
                                     f2skip += 1
 
                                 else:
-                                    # if there is no data left after QARTOD tests are applied, leave flag values NOT_EVALUATED/UNKNOWN (2)
-                                    save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                                    save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
+                                    # if there is no data left after QARTOD tests are applied,
+                                    # leave flag values NOT_EVALUATED/UNKNOWN (2)
+                                    add_da(ds, flag_vals, attrs, testvar, qc_varname)
+                                    add_da(ds2, flag_vals2, attrs, testvar, qc_varname)
                                     summary[testvar]['not_evaluated_profiles'] += 2
                                     f2skip += 1
                             else:
                                 # if timestamps are too far apart they're likely not from the same profile pair
-                                # leave flag values as NOT_EVALUATED/UNKNOWN (2), set the attributes and save the .nc files
-                                save_ds(ds, flag_vals, attrs, qc_varname, ncfiles[i], testvar)
-                                save_ds(ds2, flag_vals2, attrs, qc_varname, f2, testvar)
+                                # leave flag values as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                                add_da(ds, flag_vals, attrs, testvar, qc_varname)
+                                add_da(ds2, flag_vals2, attrs, testvar, qc_varname)
                                 summary[testvar]['not_evaluated_profiles'] += 2
                                 f2skip += 1
+
+                    # add the hysteresis test to ancillary variable attribute
+                    append_ancillary_variables(ds[testvar], qc_varname)
+                    try:
+                        check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                        append_ancillary_variables(ds2[testvar], qc_varname)
+                    except KeyError:
+                        pass
+
+                    # add the hysteresis test to the salinity and density ancillary variable attribute
+                    for v in ['salinity', 'density']:
+                        append_ancillary_variables(ds[v], qc_varname)
+                        try:
+                            check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                            append_ancillary_variables(ds2[v], qc_varname)
+                        except KeyError:
+                            pass
+
+                # save the dataset(s)
+                ds.to_netcdf(ncfiles[i])
+                del ds
+                try:
+                    ds2.to_netcdf(f2)
+                    del ds2
+                except NameError:
+                    pass
 
             for tv in test_varnames:
                 tvs = summary[tv]
