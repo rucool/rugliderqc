@@ -387,18 +387,18 @@ def main(args):
                     # add the hysteresis test to ancillary variable attribute
                     append_ancillary_variables(ds[testvar], qc_varname)
                     try:
-                        check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                        #check = ds2[qc_varname]  # check that the qc variable is in the dataset
                         append_ancillary_variables(ds2[testvar], qc_varname)
-                    except KeyError:
+                    except NameError:
                         pass
 
                     # add the hysteresis test to the salinity and density ancillary variable attribute
                     for v in ['salinity', 'density']:
                         append_ancillary_variables(ds[v], qc_varname)
                         try:
-                            check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                            #check = ds2[qc_varname]  # check that the qc variable is in the dataset
                             append_ancillary_variables(ds2[v], qc_varname)
-                        except KeyError:
+                        except NameError:
                             pass
 
                 # save the dataset(s)
