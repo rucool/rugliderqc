@@ -206,7 +206,9 @@ def main(args):
 
                 i += skip
 
-                # TODO end the code when all the files have been tested
+                # end the code when all the files have been tested
+                if i == len(ncfiles):
+                    sys.exit()
 
                 try:
                     with xr.open_dataset(ncfiles[i]) as ds:
