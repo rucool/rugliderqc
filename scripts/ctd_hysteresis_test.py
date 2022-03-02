@@ -43,7 +43,6 @@ def apply_qartod_qc(dataset, varname):
     for qv in [x for x in dataset.data_vars if f'{varname}_qartod' in x]:
         qv_vals = dataset[qv].values
         qv_idx = np.where(np.logical_or(np.logical_or(qv_vals == 2, qv_vals == 3), qv_vals == 4))[0]
-        #qv_idx = np.where(np.logical_or(dataset[qv].values == 3, dataset[qv].values == 4))[0]
         datacopy[qv_idx] = np.nan
     return datacopy
 
@@ -207,6 +206,8 @@ def main(args):
                 i += skip
 
                 # TODO end the code when all the files have been tested
+                if i >= len(ncfiles):
+                    continue
 
                 try:
                     with xr.open_dataset(ncfiles[i]) as ds:
@@ -387,18 +388,18 @@ def main(args):
                     # add the hysteresis test to ancillary variable attribute
                     append_ancillary_variables(ds[testvar], qc_varname)
                     try:
-                        #check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                        check = ds2[qc_varname]  # check that the qc variable is in the dataset
                         append_ancillary_variables(ds2[testvar], qc_varname)
-                    except NameError:
+                    except (KeyError, NameError):
                         pass
 
                     # add the hysteresis test to the salinity and density ancillary variable attribute
                     for v in ['salinity', 'density']:
                         append_ancillary_variables(ds[v], qc_varname)
                         try:
-                            #check = ds2[qc_varname]  # check that the qc variable is in the dataset
+                            check = ds2[qc_varname]  # check that the qc variable is in the dataset
                             append_ancillary_variables(ds2[v], qc_varname)
-                        except NameError:
+                        except (KeyError, NameError):
                             pass
 
                 # save the dataset(s)
