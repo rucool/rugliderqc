@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio 12/22/2021
+Last modified: lgarzio 3/11/2021
 This is a wrapper script that imports tools to quality control RUCOOL's glider data.
 """
 
@@ -58,6 +58,10 @@ scripts.ctd_hysteresis_test.main(parsed_args)
 
 # summarize QARTOD flags
 scripts.summarize_qartod_flags.main(parsed_args)
+
+# calculate optimal time shift for each segment for variables defined in config files (e.g. DO and pH voltages)
+# requires a deployment time_shift.yml config file in ./glider-deployment/config/qc to run
+scripts.time_shift.main(parsed_args)
 
 # move the files to the parent directory to be sent to ERDDAP
 scripts.move_nc_files.main(parsed_args)
