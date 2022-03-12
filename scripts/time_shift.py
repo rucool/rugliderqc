@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 3/11/2022
+Last modified: lgarzio on 3/12/2022
 Calculate optimal time shifts for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -63,7 +63,7 @@ def apply_time_shift(df, varname, shift_seconds):
     sdf = sdf.set_index('time')
 
     # merge back into the original dataframe and drop rows with nans
-    df = df.merge(sdf, how='left', left_index=True, right_index=True)
+    df = df.merge(sdf, how='outer', left_index=True, right_index=True)
     df.dropna(how='all', inplace=True)
 
     # drop the original variable
@@ -103,7 +103,7 @@ def interp_pressure(df):
     :returns: pandas dataframe containing the time-shifted variable, interpolated pressure, and time as the index
     """
     # drop the original time index
-    df['pressure'] = df['pressure'].interpolate(method='linear', limit_direction='forward')
+    df['pressure'] = df['pressure'].interpolate(method='linear', limit_direction='both')
 
     return df
 
@@ -218,6 +218,7 @@ def main(args):
 
             unique_source_files, source_file_idx = np.unique(source_files, return_index=True)
             source_file_idx = np.append(source_file_idx, len(ncfiles))
+            source_file_idx = np.sort(source_file_idx)
 
             files_tested = 0
 
@@ -236,6 +237,7 @@ def main(args):
                     times = np.array([], dtype='datetime64[ns]')
 
                     # Iterate through profile files in each trajectory, appending the down and up casts to dataframes
+                    # TODO append data to one dataframe because pressure interpolation isn't working properly!!!!
                     downs = pd.DataFrame()
                     ups = pd.DataFrame()
                     for f in groupfiles:
