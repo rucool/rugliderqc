@@ -243,8 +243,7 @@ def main(args):
                     trajectory = pd.DataFrame()
                     for f in groupfiles:
                         try:
-                            with xr.open_dataset(f) as ds:
-                                ds = ds.load()
+                            ds = xr.open_dataset(f)
                         except OSError as e:
                             logging.error('Error reading file {:s} ({:})'.format(f, e))
                             status = 1
