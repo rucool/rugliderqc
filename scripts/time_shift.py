@@ -3,7 +3,7 @@
 """
 Author: lnazzaro and lgarzio on 3/9/2022
 Last modified: lgarzio on 3/12/2022
-Calculate optimal time shifts for variables defined in config files (e.g. DO and pH voltages)
+Calculate optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
 import os
@@ -48,8 +48,9 @@ def apply_time_shift(df, varname, shift_seconds):
     :param shift_seconds: desired time shift in seconds
     :returns: pandas dataframe containing the time-shifted variable, pressure, and time as the index
     """
-    # split off the variable into a separate dataframe
-    sdf = pd.DataFrame(df[varname])
+    # split off the variable and profile direction identifiers into a separate dataframe
+    sdf = pd.DataFrame(dict(shifted_var=df[varname],
+                            downs=df['downs']))
 
     # calculate the shifted timestamps
     tm_shift = df.index - dt.timedelta(seconds=shift_seconds)
@@ -59,17 +60,19 @@ def apply_time_shift(df, varname, shift_seconds):
     sdf.reset_index(drop=True, inplace=True)
 
     # rename the new columns and set the shifted timestamps as the index
-    sdf = sdf.rename(columns={varname: '{}_shifted'.format(varname), 'time_shift': 'time'})
+    sdf = sdf.rename(columns={'time_shift': 'time',
+                              'downs': 'downs_shifted'})
     sdf = sdf.set_index('time')
 
     # merge back into the original dataframe and drop rows with nans
-    df = df.merge(sdf, how='outer', left_index=True, right_index=True)
-    df.dropna(how='all', inplace=True)
+    df2 = df.merge(sdf, how='outer', left_index=True, right_index=True)
 
     # drop the original variable
-    df.drop(columns=varname, inplace=True)
+    df2.drop(columns=[varname, 'downs'], inplace=True)
+    df2 = df2.rename(columns={'shifted_var': f'{varname}_shifted',
+                              'downs_shifted': 'downs'})
 
-    return df
+    return df2
 
 
 def calculate_pressure_range(df):
@@ -236,10 +239,8 @@ def main(args):
                 for testvar in shift_dict:
                     times = np.array([], dtype='datetime64[ns]')
 
-                    # Iterate through profile files in each trajectory, appending the down and up casts to dataframes
-                    # TODO append data to one dataframe because pressure interpolation isn't working properly!!!!
-                    downs = pd.DataFrame()
-                    ups = pd.DataFrame()
+                    # Iterate through profile files in each trajectory, define profile direction and append to df
+                    trajectory = pd.DataFrame()
                     for f in groupfiles:
                         try:
                             with xr.open_dataset(f) as ds:
@@ -275,16 +276,21 @@ def main(args):
                         # determine if profile is up or down, append to appropriate dataframe
                         if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
                             # up cast
-                            ups = ups.append(df)
+                            df['downs'] = 0
                         else:
                             # down cast
-                            downs = downs.append(df)
+                            df['downs'] = 1
+                        trajectory = trajectory.append(df)
 
                     min_time = pd.to_datetime(np.nanmin(times)).strftime('%Y-%m-%dT%H:%M:%S')
                     max_time = pd.to_datetime(np.nanmax(times)).strftime('%Y-%m-%dT%H:%M:%S')
 
-                    if np.logical_or(len(ups) == 0, len(downs) == 0):
-                        logging.info('Down/up pairs not identified; optimal time shift not calculated'
+                    # check the pressure range
+                    trajectory_pressure_range = calculate_pressure_range(trajectory)
+
+                    # don't calculate area if the trajectory pressure range is <3 dbar
+                    if trajectory_pressure_range < 3:
+                        logging.info('Profile data spans <3 dbar, optimal time shift not calculated'
                                      ' for {} {} to {}'.format(testvar, min_time, max_time))
 
                         shift_dict[testvar]['shift'] = np.nan
@@ -292,48 +298,53 @@ def main(args):
                         # add start and end times
                         shift_dict[testvar]['t0'] = min_time
                         shift_dict[testvar]['tf'] = max_time
-
                     else:
-                        # gets rid of duplicates and syncs the dataframes so they can be merged
-                        ups = ups.resample('1s').mean()
-                        downs = downs.resample('1s').mean()
+                        # gets rid of duplicates and syncs the dataframes so they can be merged when time-shifted
+                        trajectory_resample = trajectory.resample('1s').mean()
 
                         # For each shift, shift the master dataframes by x seconds, bin data by 0.25 dbar,
                         # calculate area between curves
                         areas = []
                         for shift in shifts:
-                            ups_shift = apply_time_shift(ups, testvar, shift)  # apply the time shift
-                            ups_interp = interp_pressure(ups_shift)  # interpolate pressure
-                            ups_binned = pressure_bins(ups_interp)  # calculate depth bins
-                            ups_binned.dropna(inplace=True)
+                            trajectory_shift = apply_time_shift(trajectory_resample, testvar, shift)
+                            trajectory_interp = interp_pressure(trajectory_shift)
+                            trajectory_interp.dropna(subset=[f'{testvar}_shifted'], inplace=True)
 
-                            downs_shift = apply_time_shift(downs, testvar, shift)  # apply the time shift
-                            downs_interp = interp_pressure(downs_shift)  # interpolate pressure
-                            downs_binned = pressure_bins(downs_interp)  # calculate depth bins
-                            downs_binned.dropna(inplace=True)
+                            # find down identifiers that were averaged in the resampling and reset
+                            downs = np.array(trajectory_interp['downs'])
+                            ind = np.argwhere(downs == 0.5).flatten()
+                            downs[ind] = downs[ind - 1]
+                            trajectory_interp['downs'] = downs
 
-                            if np.logical_or(len(ups_binned) == 0, len(downs_binned) == 0):
+                            # after time shifting and interpolating pressure, divide df into down and up profiles
+                            downs_df = trajectory_interp[trajectory_interp['downs'] == 1].copy()
+                            ups_df = trajectory_interp[trajectory_interp['downs'] == 0].copy()
+
+                            # check the pressure range
+                            downs_pressure_range = calculate_pressure_range(downs_df)
+                            ups_pressure_range = calculate_pressure_range(ups_df)
+
+                            # don't calculate area if either profile grouping spans <3 dbar
+                            if np.logical_or(downs_pressure_range < 3, ups_pressure_range < 3):
                                 area = np.nan
                             else:
-                                ups_pressure_range = calculate_pressure_range(ups_binned)
-                                downs_pressure_range = calculate_pressure_range(downs_binned)
+                                # bin data frames
+                                downs_binned = pressure_bins(downs_df)
+                                downs_binned.dropna(inplace=True)
+                                ups_binned = pressure_bins(ups_df)
+                                ups_binned.dropna(inplace=True)
 
-                                # don't calculate area if either profile spans <3 dbar
-                                if np.logical_or(ups_pressure_range < 3, downs_pressure_range < 3):
-                                    area = np.nan
-                                else:
-                                    # combine dataframes
-                                    downs_ups = downs_binned.append(ups_binned.iloc[::-1])
+                                downs_ups = downs_binned.append(ups_binned.iloc[::-1])
 
-                                    # calculate area between curves
-                                    polygon_points = downs_ups.values.tolist()
-                                    polygon_points.append(polygon_points[0])
-                                    polygon = Polygon(polygon_points)
-                                    polygon_lines = polygon.exterior
-                                    polygon_crossovers = polygon_lines.intersection(polygon_lines)
-                                    polygons = polygonize(polygon_crossovers)
-                                    valid_polygons = MultiPolygon(polygons)
-                                    area = valid_polygons.area
+                                # calculate area between curves
+                                polygon_points = downs_ups.values.tolist()
+                                polygon_points.append(polygon_points[0])
+                                polygon = Polygon(polygon_points)
+                                polygon_lines = polygon.exterior
+                                polygon_crossovers = polygon_lines.intersection(polygon_lines)
+                                polygons = polygonize(polygon_crossovers)
+                                valid_polygons = MultiPolygon(polygons)
+                                area = valid_polygons.area
 
                             areas.append(area)
 
@@ -351,12 +362,12 @@ def main(args):
                                                                                                    max_time))
                         else:
                             # find the shift that results in the minimum area between the curves
-                            shift_dict[testvar]['shift'] = np.argmin(areas)
+                            shift_dict[testvar]['shift'] = np.nanargmin(areas)
 
                             logging.info('Optimal time shift for {} {} to {}: {} sec'.format(testvar,
                                                                                              min_time,
                                                                                              max_time,
-                                                                                             np.argmin(areas)))
+                                                                                             np.nanargmin(areas)))
 
                 # add the optimal time shifts back into the .nc files
                 for f in groupfiles:
