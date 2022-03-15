@@ -1,3 +1,7 @@
 time_shift:
-    oxygen_concentration: ''
-    sbe41n_ph_ref_voltage: ''
+    oxygen_concentration:
+        long_name: Dissolved Oxygen Shifted
+    oxygen_saturation:
+        long_name: Dissolved Oxygen Saturation Shifted
+    sbe41n_ph_ref_voltage:
+        long_name: pH Voltage Shifted
