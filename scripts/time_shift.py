@@ -2,8 +2,8 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 3/14/2022
-Calculate optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
+Last modified: lgarzio on 3/15/2022
+Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
 import os
@@ -14,6 +14,7 @@ import datetime as dt
 import numpy as np
 import pandas as pd
 import xarray as xr
+import copy
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import polygonize
@@ -40,17 +41,21 @@ def apply_qc(dataset, varname):
     return datacopy
 
 
-def apply_time_shift(df, varname, shift_seconds):
+def apply_time_shift(df, varname, shift_seconds, merge_original=False):
     """
     Apply a specified time shift to a variable.
     :param df: pandas dataframe containing the variable of interest (varname), pressure, and time as the index
     :param varname: sensor variable name (e.g. dissolved_oxygen)
     :param shift_seconds: desired time shift in seconds
+    :param merge_original: merge shifted dataframe with the original dataframe, default is False
     :returns: pandas dataframe containing the time-shifted variable, pressure, and time as the index
     """
     # split off the variable and profile direction identifiers into a separate dataframe
-    sdf = pd.DataFrame(dict(shifted_var=df[varname],
-                            downs=df['downs']))
+    try:
+        sdf = pd.DataFrame(dict(shifted_var=df[varname],
+                                downs=df['downs']))
+    except KeyError:
+        sdf = pd.DataFrame(dict(shifted_var=df[varname]))
 
     # calculate the shifted timestamps
     tm_shift = df.index - dt.timedelta(seconds=shift_seconds)
@@ -64,13 +69,17 @@ def apply_time_shift(df, varname, shift_seconds):
                               'downs': 'downs_shifted'})
     sdf = sdf.set_index('time')
 
-    # merge back into the original dataframe and drop rows with nans
-    df2 = df.merge(sdf, how='outer', left_index=True, right_index=True)
+    if merge_original:
+        # merge back into the original dataframe and drop rows with nans
+        df2 = df.merge(sdf, how='outer', left_index=True, right_index=True)
 
-    # drop the original variable
-    df2.drop(columns=[varname, 'downs'], inplace=True)
-    df2 = df2.rename(columns={'shifted_var': f'{varname}_shifted',
-                              'downs_shifted': 'downs'})
+        # drop the original variable
+        df2.drop(columns=[varname, 'downs'], inplace=True)
+        df2 = df2.rename(columns={'shifted_var': f'{varname}_shifted',
+                                  'downs_shifted': 'downs'})
+    else:
+        df2 = sdf.rename(columns={'shifted_var': f'{varname}_shifted',
+                                  'downs_shifted': 'downs'})
 
     return df2
 
@@ -233,8 +242,10 @@ def main(args):
 
                 groupfiles = ncfiles[ii:sf_idx]
 
+                add_dict = dict(shift=np.nan, shifted_df='', t0=0, tf=0)
                 for key, values in shift_dict.items():
-                    shift_dict[key] = dict(shift=np.nan, t0=0, tf=0)
+                    for k, v in add_dict.items():
+                        shift_dict[key][k] = copy.deepcopy(v)
 
                 # Iterate through the test variables
                 for testvar in shift_dict:
@@ -242,6 +253,7 @@ def main(args):
 
                     # Iterate through profile files in each trajectory, define profile direction and append to df
                     trajectory = pd.DataFrame()
+                    trajectory_all = pd.DataFrame()
                     for f in groupfiles:
                         try:
                             ds = xr.open_dataset(f)
@@ -273,6 +285,10 @@ def main(args):
                         df = data_copy.to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
                         df = df.dropna(how='all')
 
+                        # make a dataframe without QC removed for time shifting after the optimal shift is calculated
+                        df_all = ds[testvar].to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
+                        df_all = df_all.dropna(how='all')
+
                         # determine if profile is up or down, append to appropriate dataframe
                         if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
                             # up cast
@@ -281,6 +297,7 @@ def main(args):
                             # down cast
                             df['downs'] = 1
                         trajectory = trajectory.append(df)
+                        trajectory_all = trajectory_all.append(df_all)
                         ds.close()
 
                     min_time = pd.to_datetime(np.nanmin(times)).strftime('%Y-%m-%dT%H:%M:%S')
@@ -318,7 +335,9 @@ def main(args):
                             # calculate area between curves
                             areas = []
                             for shift in shifts:
-                                trajectory_shift = apply_time_shift(trajectory_resample, testvar, shift)
+                                kwargs = dict()
+                                kwargs['merge_original'] = True
+                                trajectory_shift = apply_time_shift(trajectory_resample, testvar, shift, **kwargs)
                                 trajectory_interp = interp_pressure(trajectory_shift)
                                 trajectory_interp.dropna(subset=[f'{testvar}_shifted'], inplace=True)
 
@@ -378,12 +397,26 @@ def main(args):
                                                                                                        max_time))
                             else:
                                 # find the shift that results in the minimum area between the curves
-                                shift_dict[testvar]['shift'] = np.nanargmin(areas)
+                                opt_shift = int(np.nanargmin(areas))
+                                if opt_shift == 60:
+                                    shift_dict[testvar]['shift'] = np.nan
 
-                                logging.info('Optimal time shift for {} {} to {}: {} sec'.format(testvar,
-                                                                                                 min_time,
-                                                                                                 max_time,
-                                                                                                 np.nanargmin(areas)))
+                                    logging.info('Optimal time shift for {} {} to {}: undetermined'.format(testvar,
+                                                                                                           min_time,
+                                                                                                           max_time))
+                                else:
+                                    shift_dict[testvar]['shift'] = opt_shift
+
+                                    logging.info('Optimal time shift for {} {} to {}: {} sec'.format(testvar,
+                                                                                                     min_time,
+                                                                                                     max_time,
+                                                                                                     opt_shift))
+                    # shift the data in the trajectory dataframe appended earlier by the optimal time shift calculated
+                    # if there is no optimal shift calculated, don't create the shifted dataframe
+                    optimal_shift = shift_dict[testvar]['shift']
+                    if ~np.isnan(optimal_shift):
+                        trajectory_shifted = apply_time_shift(trajectory_all, testvar, optimal_shift)
+                        shift_dict[testvar]['shifted_df'] = trajectory_shifted
 
                 # add the optimal time shifts back into the .nc files
                 for f in groupfiles:
@@ -400,15 +433,50 @@ def main(args):
                             data = ds[testvar]
                         except KeyError:
                             continue
+
+                        data_shift_varname = f'{testvar}_shifted'
                         shift_varname = f'{testvar}_optimal_shift'
 
+                        # if there is no optimal shift calculated, the shifted data array is the same as the original
+                        # otherwise, apply the time shift to the data
+                        if np.isnan(items['shift']):
+                            shifted_data = data.values.copy()
+                        else:
+                            df = items['shifted_df']
+                            df_file = df[(df.index >= np.nanmin(data.time)) & (df.index <= np.nanmax(data.time))].copy()
+                            df_file.dropna(inplace=True)
+                            data_df = data.to_dataframe()
+                            data_df[data_shift_varname] = np.nan
+
+                            # insert the shifted data in the location of the closest timestamp from the original file
+                            for name, row in df_file.iterrows():
+                                name_idx = np.argmin(abs(data_df.index - name))
+                                data_df.loc[data_df.index[name_idx], data_shift_varname] = row[data_shift_varname]
+
+                            # create data array of shifted values
+                            shifted_data = np.array(data_df[data_shift_varname])
+
+                        # insert the array of shifted values into the original dataset
+                        attrs = data.attrs.copy()
+                        attrs['long_name'] = items['long_name']
+                        comment = '{} shifted by the optimal time shift (seconds) determined by grouping down ' \
+                                  'and up profiles for one glider segment, then minimizing the areas between the ' \
+                                  'down/up profiles by testing time shifts between 0 and {} seconds'.format(testvar,
+                                                                                                            seconds)
+                        attrs['comment'] = comment
+
+                        da = xr.DataArray(shifted_data.astype(data.dtype), coords=data.coords, dims=data.dims,
+                                          name=data_shift_varname, attrs=attrs)
+                        ds[data_shift_varname] = da
+
+                        # create data array of the optimal shift (seconds) and insert in original data file
                         shift_vals = items['shift'] * np.ones(np.shape(data.values))
 
                         comment = 'Optimal time shift (seconds) determined by grouping down and up profiles for one' \
-                                  'segment between {} and {}, then minimizing the area between the down/up profiles ' \
-                                  'by testing time shifts between 0 and {} seconds'.format(items['t0'],
-                                                                                           items['tf'],
-                                                                                           seconds)
+                                  'glider segment between {} and {}, then minimizing the area between the down/up ' \
+                                  'profiles by testing time shifts between 0 and {} seconds'.format(items['t0'],
+                                                                                                    items['tf'],
+                                                                                                    seconds)
 
                         # set attributes
                         attrs = {
