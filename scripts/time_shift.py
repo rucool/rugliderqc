@@ -495,7 +495,7 @@ def main(args):
                             'comment': comment,
                             'units': 'sec',
                             'valid_min': 0,
-                            'valid_max': seconds,
+                            'valid_max': 59,
                             'qc_target': testvar
                         }
 
