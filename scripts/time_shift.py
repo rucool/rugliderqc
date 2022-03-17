@@ -473,8 +473,8 @@ def main(args):
                         attrs['long_name'] = items['long_name']
                         comment = '{} shifted by the optimal time shift (seconds) determined by grouping down ' \
                                   'and up profiles for one glider segment, then minimizing the areas between the ' \
-                                  'down/up profiles by testing time shifts between 0 and {} seconds'.format(testvar,
-                                                                                                            items['shift'])
+                                  'profiles by testing time shifts between 0 and {} seconds'.format(testvar,
+                                                                                                    seconds)
                         attrs['comment'] = comment
 
                         da = xr.DataArray(shifted_data.astype(data.dtype), coords=data.coords, dims=data.dims,
@@ -484,11 +484,9 @@ def main(args):
                         # create data array of the optimal shift (seconds) and insert in original data file
                         shift_vals = items['shift'] * np.ones(np.shape(data.values))
 
-                        comment = 'Optimal time shift (seconds) determined by grouping down and up profiles for one' \
-                                  'glider segment between {} and {}, then minimizing the area between the down/up ' \
-                                  'profiles by testing time shifts between 0 and {} seconds'.format(items['t0'],
-                                                                                                    items['tf'],
-                                                                                                    items['shift'])
+                        comment = 'Optimal time shift (seconds) determined by grouping down and up profiles for one ' \
+                                  'glider segment, then minimizing the area between the ' \
+                                  'profiles by testing time shifts between 0 and {} seconds'.format(seconds)
 
                         # set attributes
                         attrs = {
