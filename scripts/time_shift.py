@@ -193,7 +193,7 @@ def main(args):
             config_file = os.path.join(deployment_qc_config_root, 'time_shift.yml')
             if not os.path.isfile(config_file):
                 logging.warning(
-                    'Deployment config file not specified: {:s}. Time shifts not calculated.'.format(config_file))
+                    'Time shifts not calculated because deployment config file not specified: {:s}.'.format(config_file))
                 status = 1
                 continue
 
@@ -412,16 +412,7 @@ def main(args):
                                     else:
                                         # find the shift that results in the minimum area between the curves
                                         opt_shift = int(np.nanargmin(areas))
-                                        if opt_shift == 60:
-                                            shift_dict[testvar]['shift'] = np.nan
-
-                                            logging.info('Optimal time shift for {} {} to {}: '
-                                                         'undetermined'.format(testvar, min_time, max_time))
-                                        else:
-                                            shift_dict[testvar]['shift'] = opt_shift
-
-                                            logging.info('Optimal time shift for {} {} to {}: '
-                                                         '{} sec'.format(testvar, min_time, max_time, opt_shift))
+                                        shift_dict[testvar]['shift'] = opt_shift
 
                         # shift the data in the non-QC'd trajectory dataframe by the optimal time shift calculated
                         # if there is no optimal shift calculated, don't create the shifted dataframe
@@ -493,7 +484,7 @@ def main(args):
                             'comment': comment,
                             'units': 'sec',
                             'valid_min': 0,
-                            'valid_max': 59,
+                            'valid_max': seconds,
                             'qc_target': testvar
                         }
 
