@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 3/16/2022
+Last modified: lgarzio on 3/23/2022
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -199,6 +199,11 @@ def main(args):
 
             config_dict = loadconfig(config_file)
             shift_dict = config_dict['time_shift']
+
+            # keep track of each segment's optimal time shift
+            segment_shifts = dict()
+            for k, v in shift_dict.items():
+                segment_shifts[k] = np.array([])
 
             # List the netcdf files
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
@@ -412,11 +417,23 @@ def main(args):
                                     else:
                                         # find the shift that results in the minimum area between the curves
                                         opt_shift = int(np.nanargmin(areas))
+
+                                        # if the optimal shift is the last shift tested (couldn't find a minimal area
+                                        # with the times tested), use the closest non-nan shift from the previous
+                                        # segments
+                                        if opt_shift == np.nanmax(seconds):
+                                            non_nans = ~np.isnan(segment_shifts[testvar])
+                                            if len(non_nans) > 0:
+                                                opt_shift = int(segment_shifts[testvar][non_nans][-1])
+                                            else:
+                                                opt_shift = np.nan
+
                                         shift_dict[testvar]['shift'] = opt_shift
 
                         # shift the data in the non-QC'd trajectory dataframe by the optimal time shift calculated
                         # if there is no optimal shift calculated, don't create the shifted dataframe
                         optimal_shift = shift_dict[testvar]['shift']
+                        segment_shifts[testvar] = np.append(segment_shifts[testvar], optimal_shift)
                         if ~np.isnan(optimal_shift):
                             trajectory_shifted = apply_time_shift(trajectory_all, testvar, optimal_shift)
                             shift_dict[testvar]['shifted_df'] = trajectory_shifted
@@ -484,7 +501,7 @@ def main(args):
                             'comment': comment,
                             'units': 'sec',
                             'valid_min': 0,
-                            'valid_max': seconds,
+                            'valid_max': seconds - 1,
                             'qc_target': testvar
                         }
 
