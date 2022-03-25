@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lnazzaro on 2/25/2022
+Last modified: lgarzio on 3/25/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -94,6 +94,17 @@ def define_gross_flatline_config(instrument_name, model_name):
         config_filename = 'no_filename_specified'
 
     return config_filename
+
+
+def set_encoding(data_array, original_encoding):
+    """
+    Set the encoding for the QC variables based on the encoding for the variable tested
+    :param data_array: data array to which encoding is added
+    :param original_encoding: encoding dictionary from the variable tested
+    """
+    data_array.encoding = original_encoding
+    data_array.encoding['dtype'] = data_array.dtype
+    data_array.encoding['_FillValue'] = -999
 
 
 def set_qartod_attrs(test, sensor, thresholds):
@@ -231,10 +242,15 @@ def main(args):
                         else:
                             ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
-                        # Add gross/flatline QC variable to the original dataset
-                        da = xr.DataArray(flag_results, coords=ds[sensor].coords, dims=ds[sensor].dims,
+                        # Create gross/flatline data array
+                        da = xr.DataArray(flag_results.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname,
                                           attrs=attrs)
+
+                        # Set the encoding
+                        set_encoding(da, ds[sensor].encoding)
+
+                        # Add gross/flatline QC variable to the original dataset
                         ds[qc_varname] = da
 
                 # manually run gross range test for pressure based on depth_rating in file
@@ -259,9 +275,14 @@ def main(args):
                 else:
                     ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
-                # Add QC variable to the original dataset
+                # Create data array
                 da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                   name=qc_varname, attrs=attrs)
+
+                # Set the encoding
+                set_encoding(da, ds[sensor].encoding)
+
+                # Add QC variable to the original dataset
                 ds[qc_varname] = da
 
                 # Find the configuration files for the climatology, spike, rate of change, and pressure tests
@@ -287,7 +308,8 @@ def main(args):
                     tdiff_long_i = np.append(non_nan_i[tdiff_long], non_nan_i[tdiff_long + 1])
 
                     for test, cinfo in config_info['qartod'].items():
-                        if test == 'pressure_test':  # check that the pressure values are continually increasing/decreasing
+                        if test == 'pressure_test':
+                            # check that the pressure values are continually increasing/decreasing
                             qc_varname = f'{sensor}_qartod_pressure_test'
                             flag_vals = 2 * np.ones(np.shape(data))
                             flag_vals[np.invert(non_nan_ind)] = qartod.QartodFlags.MISSING
@@ -402,9 +424,14 @@ def main(args):
                         else:
                             ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
-                        # Add QC variable to the original dataset
+                        # Create data array
                         da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname, attrs=attrs)
+
+                        # Set the encoding
+                        set_encoding(da, ds[sensor].encoding)
+
+                        # Add QC variable to the original dataset
                         ds[qc_varname] = da
 
                 # TODO add location test
