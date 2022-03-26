@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 3/23/2022
+Last modified: lgarzio on 3/26/2022
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -142,6 +142,17 @@ def pressure_bins(df, interval=0.25):
     return df
 
 
+def set_encoding(data_array, original_encoding=None):
+    """
+    Set the encoding for the QC variables based on the encoding for the variable tested
+    :param data_array: data array to which encoding is added
+    :param original_encoding: encoding dictionary from the variable tested
+    """
+    if original_encoding:
+        data_array.encoding = original_encoding
+    data_array.encoding['dtype'] = data_array.dtype
+
+
 def main(args):
     status = 0
 
@@ -193,7 +204,8 @@ def main(args):
             config_file = os.path.join(deployment_qc_config_root, 'time_shift.yml')
             if not os.path.isfile(config_file):
                 logging.warning(
-                    'Time shifts not calculated because deployment config file not specified: {:s}.'.format(config_file))
+                    'Time shifts not calculated because deployment config file not specified: {:s}.'.format(
+                        config_file))
                 status = 1
                 continue
 
@@ -485,8 +497,14 @@ def main(args):
                                                                                                     seconds)
                         attrs['comment'] = comment
 
+                        # Create data array of shifted data
                         da = xr.DataArray(shifted_data.astype(data.dtype), coords=data.coords, dims=data.dims,
                                           name=data_shift_varname, attrs=attrs)
+
+                        # Set the encoding
+                        set_encoding(da, original_encoding=data.encoding)
+
+                        # Add the shifted data to the dataset
                         ds[data_shift_varname] = da
 
                         # create data array of the optimal shift (seconds) and insert in original data file
@@ -505,9 +523,14 @@ def main(args):
                             'qc_target': testvar
                         }
 
-                        # add variable to the original dataset
+                        # Create data array of optimal shift
                         da = xr.DataArray(shift_vals.astype('float32'), coords=data.coords, dims=data.dims,
                                           name=shift_varname, attrs=attrs)
+
+                        # Set the encoding
+                        set_encoding(da, original_encoding=data.encoding)
+
+                        # Add the optimal shift to the original dataset
                         ds[shift_varname] = da
 
                     ds.to_netcdf(f)
