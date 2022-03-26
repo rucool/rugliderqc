@@ -125,6 +125,7 @@ def main(args):
                     attrsds = attrsds.drop_dims(['time'])
                     attrsds = attrsds.rename({'ts': 'time'})
                     attrsds.to_netcdf(attrs_filename)
+                    logging.info('Attribute file written: {:s}'.format(attrs_filename))
 
                 else:
                     # if the file has already been generated, check the rest of the files to see if there are
