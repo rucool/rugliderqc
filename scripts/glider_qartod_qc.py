@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 3/25/2022
+Last modified: lgarzio on 3/26/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -96,15 +96,13 @@ def define_gross_flatline_config(instrument_name, model_name):
     return config_filename
 
 
-def set_encoding(data_array, original_encoding):
+def set_encoding(data_array):
     """
-    Set the encoding for the QC variables based on the encoding for the variable tested
+    Set the data type encoding for the QC variables
     :param data_array: data array to which encoding is added
-    :param original_encoding: encoding dictionary from the variable tested
     """
-    data_array.encoding = original_encoding
     data_array.encoding['dtype'] = data_array.dtype
-    data_array.encoding['_FillValue'] = -999
+    #data_array.encoding['_FillValue'] = np.int32(-999)
 
 
 def set_qartod_attrs(test, sensor, thresholds):
@@ -248,7 +246,7 @@ def main(args):
                                           attrs=attrs)
 
                         # Set the encoding
-                        set_encoding(da, ds[sensor].encoding)
+                        set_encoding(da)
 
                         # Add gross/flatline QC variable to the original dataset
                         ds[qc_varname] = da
@@ -280,7 +278,7 @@ def main(args):
                                   name=qc_varname, attrs=attrs)
 
                 # Set the encoding
-                set_encoding(da, ds[sensor].encoding)
+                set_encoding(da)
 
                 # Add QC variable to the original dataset
                 ds[qc_varname] = da
@@ -429,7 +427,7 @@ def main(args):
                                           name=qc_varname, attrs=attrs)
 
                         # Set the encoding
-                        set_encoding(da, ds[sensor].encoding)
+                        set_encoding(da)
 
                         # Add QC variable to the original dataset
                         ds[qc_varname] = da
@@ -438,6 +436,7 @@ def main(args):
 
                 # Save the netcdf file with QC variables over the original file
                 ds.to_netcdf(f)
+                ds.close()
 
     return status
 
