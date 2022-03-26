@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 3/1/2022
+Last modified: lgarzio on 3/26/2022
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -76,6 +76,10 @@ def add_da(dataset, flag_array, attributes, test_varname, qc_variable_name):
     """
     da = xr.DataArray(flag_array.astype('int32'), coords=dataset[test_varname].coords, dims=dataset[test_varname].dims,
                       name=qc_variable_name, attrs=attributes)
+
+    # set the encoding data type
+    da.encoding['dtype'] = da.dtype
+
     dataset[qc_variable_name] = da
 
 
