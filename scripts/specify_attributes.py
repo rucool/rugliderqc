@@ -76,7 +76,7 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            attrs_filename = os.path.join(data_path, f'{deployment.replace("-", "_")}.nc')
+            attrs_filename = os.path.join(data_path, f'{deployment.replace("-", "_")}00Z.nc')
 
             # check if the attribute file has already been written
             if os.path.isfile(attrs_filename):
@@ -108,6 +108,8 @@ def main(args):
                     # make a copy of the first file, specify the timestamp at the beginning of the deployment
                     # and create a file with all variables and their attributes
                     attrsds = ds.copy()
+                    time_attrs = attrsds.time.attrs
+                    time_encoding = attrsds.time.encoding
                     attrsds_data_vars = list(attrsds.data_vars)
                     for dv in attrsds_data_vars:
                         try:
@@ -124,6 +126,12 @@ def main(args):
                     # drop the original time dimension and rename the placeholder
                     attrsds = attrsds.drop_dims(['time'])
                     attrsds = attrsds.rename({'ts': 'time'})
+
+                    # set time attrs and encoding
+                    attrsds.time.attrs = time_attrs
+                    attrsds.time.encoding = time_encoding
+
+                    # save file
                     attrsds.to_netcdf(attrs_filename)
                     logging.info('Attribute file written: {:s}'.format(attrs_filename))
 
