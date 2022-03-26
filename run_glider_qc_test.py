@@ -64,7 +64,7 @@ scripts.summarize_qartod_flags.main(parsed_args)
 scripts.time_shift.main(parsed_args)
 
 # write empty file at the beginning of deployment that contains the attributes for all variables for display in ERDDAP
-scripts.specify_attributes.main(parsed_args)
+# scripts.specify_attributes.main(parsed_args)
 
 # move the files to the parent directory to be sent to ERDDAP
 scripts.move_nc_files.main(parsed_args)
