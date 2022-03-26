@@ -29,13 +29,14 @@ def replace_data(ds, varname, timestamp, dim_name='ts'):
     original attributes
     """
     data_type = ds[varname].encoding['dtype']
-    try:
-        value = ds[varname].encoding['_FillValue']
-    except KeyError:
-        if np.logical_or('_qartod_' in varname, '_hysteresis_test' in varname):
-            value = 9
-        else:
-            value = np.nan
+    # try:
+    #     value = ds[varname].encoding['_FillValue']
+    # except KeyError:
+    #     if np.logical_or('_qartod_' in varname, '_hysteresis_test' in varname):
+    #         value = 9
+    #     else:
+    #         value = np.nan
+    value = ds[varname].values[0]
     placeholder_values = np.array([value], dtype=data_type)
     da = xr.DataArray(placeholder_values, coords=[timestamp], dims=[dim_name],
                       name=ds[varname].name, attrs=ds[varname].attrs)
