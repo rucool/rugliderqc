@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 2/18/2022
+Last modified: lgarzio on 3/26/2022
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -125,9 +125,14 @@ def main(args):
                     qc_varname = f'{sensor}_qartod_summary_flag'
                     attrs = set_summary_qartod_attrs(sensor, ' '.join(sensor_qartod_vars))
 
-                    # add summary variable to the original dataset
+                    # Create summary data array
                     da = xr.DataArray(summary_flag.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                       name=qc_varname, attrs=attrs)
+
+                    # set encoding data type
+                    da.encoding['dtype'] = da.dtype
+
+                    # Add summary variable to dataset
                     ds[qc_varname] = da
 
                     # add the summary variable to the sensor ancillary_variables
@@ -137,6 +142,7 @@ def main(args):
                         ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
 
                 ds.to_netcdf(f)
+                ds.close()
         return status
 
 
