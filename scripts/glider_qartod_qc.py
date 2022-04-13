@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 3/26/2022
+Last modified: lgarzio on 4/13/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -256,7 +256,11 @@ def main(args):
                 sensor = 'pressure'
 
                 # convert the depth_rating in the file (meters) to dbar before comparison with the pressure variable
-                depth_rating = float("".join(filter(str.isdigit, ds.platform.depth_rating)))
+                try:
+                    depth_rating = float("".join(filter(str.isdigit, ds.platform.depth_rating)))
+                except ValueError:
+                    # if depth rating isn't specified in the file, depth rating is the max glider depth (1000m)
+                    depth_rating = float(1000)
                 pressure_rating = gsw.p_from_z(-depth_rating, np.nanmean(ds.profile_lat.values))
                 cinfo = {'fail_span': [0, pressure_rating]}
                 qc_varname = f'{sensor}_qartod_gross_range_test'
