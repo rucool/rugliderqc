@@ -1,7 +1,10 @@
 time_shift:
     oxygen_concentration:
         long_name: Dissolved Oxygen Shifted
+        default_shift: 30
     oxygen_saturation:
         long_name: Dissolved Oxygen Saturation Shifted
+        default_shift: 30
     sbe41n_ph_ref_voltage:
         long_name: pH Voltage Shifted
+        default_shift: 30

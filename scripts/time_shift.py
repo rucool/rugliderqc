@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 3/26/2022
+Last modified: lgarzio on 6/14/2022
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -430,15 +430,17 @@ def main(args):
                                         # find the shift that results in the minimum area between the curves
                                         opt_shift = int(np.nanargmin(areas))
 
-                                        # if the optimal shift is the last shift tested (couldn't find a minimal area
-                                        # with the times tested), use the closest non-nan shift from the previous
-                                        # segments
-                                        if opt_shift == np.nanmax(seconds):
+                                        # if the optimal shift is zero or last shift tested (couldn't find a minimal
+                                        # area within the times tested), use the closest non-nan shift from the
+                                        # previous segments
+                                        if np.logical_or(opt_shift == 0, opt_shift == np.nanmax(seconds)):
                                             non_nans = ~np.isnan(segment_shifts[testvar])
-                                            if len(non_nans) > 0:
+                                            try:
                                                 opt_shift = int(segment_shifts[testvar][non_nans][-1])
-                                            else:
-                                                opt_shift = np.nan
+                                            except IndexError:
+                                                # if there are no previous non-nan optimal shifts, use the default
+                                                # value from the config file
+                                                opt_shift = shift_dict[testvar]['default_shift']
 
                                         shift_dict[testvar]['shift'] = opt_shift
 
@@ -493,8 +495,8 @@ def main(args):
                         attrs['long_name'] = items['long_name']
                         comment = '{} shifted by the optimal time shift (seconds) determined by grouping down ' \
                                   'and up profiles for one glider segment, then minimizing the areas between the ' \
-                                  'profiles by testing time shifts between 0 and {} seconds'.format(testvar,
-                                                                                                    seconds)
+                                  'profiles by testing time shifts between 0 and {} seconds. This is a preliminary ' \
+                                  'variable currently under development.'.format(testvar, seconds)
                         attrs['comment'] = comment
 
                         # Create data array of shifted data
@@ -512,7 +514,8 @@ def main(args):
 
                         comment = 'Optimal time shift (seconds) determined by grouping down and up profiles for one ' \
                                   'glider segment, then minimizing the area between the ' \
-                                  'profiles by testing time shifts between 0 and {} seconds'.format(seconds)
+                                  'profiles by testing time shifts between 0 and {} seconds. This is a preliminary ' \
+                                  'variable currently under development.'.format(seconds)
 
                         # set attributes
                         attrs = {
