@@ -28,7 +28,8 @@ This wrapper script runs:
 3. glider_qartod_qc.py
 4. ctd_hysteresis_test.py
 5. summarize_qartod_flags.py
-6. move_nc_files.py
+6. time_shift.py
+7. move_nc_files.py
 
 ## Acknowledgements
 
