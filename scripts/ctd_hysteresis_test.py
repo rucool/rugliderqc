@@ -94,7 +94,6 @@ def set_hysteresis_attrs(test, sensor, thresholds=None):
 
     flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
-    standard_name = f'{test}_quality_flag'
     if 'ctd' in test:
         long_name = 'CTD Hysteresis Test Quality Flag'
     else:
@@ -105,7 +104,6 @@ def set_hysteresis_attrs(test, sensor, thresholds=None):
     # Defining QC variable attributes
     attrs = {
         'comment': comment,
-        'standard_name': standard_name,
         'long_name': long_name,
         'flag_values': np.byte(flag_values),
         'flag_meanings': flag_meanings,
