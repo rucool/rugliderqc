@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 2/3/2022
+Last modified: lgarzio on 10/3/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
 doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -129,6 +129,12 @@ def main(args):
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
+                    os.rename(f, f'{f}.bad')
+                    status = 1
+                    continue
+                except ValueError as e:
+                    logging.error('Error reading file {:s} ({:})'.format(f, e))
+                    os.rename(f, f'{f}.bad')
                     status = 1
                     continue
 
