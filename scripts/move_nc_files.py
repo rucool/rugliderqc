@@ -56,6 +56,7 @@ def main(args):
                 continue
 
             # Iterate through files and move them to the parent directory
+            logging.info('Attempting to move {:} netcdf files'.format(len(ncfiles)))
             moved = 0
             for f in ncfiles:
                 p = Path(f).absolute()
