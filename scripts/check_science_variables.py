@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 10/3/2022
+Last modified: lgarzio on 10/4/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
 doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -87,6 +87,7 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
+            logging.info('Starting QC process')
             logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get all of the possible CTD variable names from the config file

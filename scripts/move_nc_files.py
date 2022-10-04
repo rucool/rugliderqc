@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 12/17/2021
+Last modified: lgarzio on 10/4/2022
 Move quality controlled glider NetCDF files to the final data directory (out of qc_queue) to send to ERDDAP
 """
 
@@ -64,6 +64,7 @@ def main(args):
                 moved += 1
 
             logging.info('Moved {:} of {:} valid netcdf files to: {:s}'.format(moved, len(ncfiles), data_path))
+            logging.info('End of QC process')
 
         return status
 

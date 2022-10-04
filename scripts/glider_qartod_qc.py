@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 4/13/2022
+Last modified: lgarzio on 10/4/2022
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -187,7 +187,7 @@ def main(args):
                     status = 1
                     continue
 
-                logging.info('Checking file: {:s}'.format(f))
+                logging.debug('Checking file: {:s}'.format(f))
 
                 # Set the qc configuration path
                 qc_config_root = os.path.join(data_home, 'qc', 'config')
@@ -215,9 +215,9 @@ def main(args):
                     qc_config_file = os.path.join(qc_config_gross_flatline, qc_config_filename)
 
                     if not os.path.isfile(qc_config_file):
-                        logging.warning('Missing QC configuration file: {:s} {:s}'.format(inst, qc_config_file))
+                        logging.debug('Missing QC configuration file: {:s} {:s}'.format(inst, qc_config_file))
                         continue
-                    logging.info('QC configuration file: {:s}'.format(qc_config_file))
+                    logging.debug('QC configuration file: {:s}'.format(qc_config_file))
 
                     # Run ioos_qc gross/flatline tests based on the QC configuration file
                     c = Config(qc_config_file)
@@ -289,7 +289,7 @@ def main(args):
 
                 # Find the configuration files for the climatology, spike, rate of change, and pressure tests
                 c = build_global_regional_config(ds, qc_config_root)
-                logging.info('Using configuration file for region: {:s} and time window: {:s} to {:s}'.format(c['region'],c['window']['starting'].strftime("%b-%d"),c['window']['ending'].strftime("%b-%d")))
+                logging.debug('Using configuration file for region: {:s} and time window: {:s} to {:s}'.format(c['region'],c['window']['starting'].strftime("%b-%d"),c['window']['ending'].strftime("%b-%d")))
 
                 # run climatology, spike, rate of change, and pressure tests
                 times = ds.time.values
