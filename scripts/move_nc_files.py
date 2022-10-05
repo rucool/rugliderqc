@@ -11,6 +11,7 @@ import argparse
 import sys
 import glob
 import shutil
+import time
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 
@@ -26,6 +27,9 @@ def main(args):
 
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
+
+    # wait 30 seconds before proceeding
+    time.sleep(30)
 
     data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
