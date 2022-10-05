@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 10/4/2022
+Last modified: lgarzio on 10/5/2022
 Move quality controlled glider NetCDF files to the final data directory (out of qc_queue) to send to ERDDAP
 """
 
@@ -10,7 +10,7 @@ import os
 import argparse
 import sys
 import glob
-from pathlib import Path
+import shutil
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 
@@ -59,8 +59,7 @@ def main(args):
             logging.info('Attempting to move {:} netcdf files'.format(len(ncfiles)))
             moved = 0
             for f in ncfiles:
-                p = Path(f).absolute()
-                p.rename(os.path.join(data_path, p.name))
+                shutil.move(f, data_path)
                 moved += 1
 
             logging.info('Moved {:} of {:} valid netcdf files to: {:s}'.format(moved, len(ncfiles), data_path))
