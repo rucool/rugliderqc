@@ -11,6 +11,7 @@ import argparse
 import sys
 import glob
 import shutil
+import subprocess
 import time
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
@@ -28,8 +29,8 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    # wait 30 seconds before proceeding
-    time.sleep(30)
+    # wait 10 seconds before proceeding
+    time.sleep(10)
 
     data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
@@ -61,12 +62,15 @@ def main(args):
 
             # Iterate through files and move them to the parent directory
             logging.info('Attempting to move {:} netcdf files'.format(len(ncfiles)))
-            moved = 0
-            for f in ncfiles:
-                shutil.move(f, data_path)
-                moved += 1
+            # moved = 0
+            # for f in ncfiles:
+            #     shutil.move(f, data_path)
+            #     moved += 1
 
-            logging.info('Moved {:} of {:} valid netcdf files to: {:s}'.format(moved, len(ncfiles), data_path))
+            # logging.info('Moved {:} of {:} valid netcdf files to: {:s}'.format(moved, len(ncfiles), data_path))
+
+            subprocess.call("mv " + os.path.join(data_path, 'qc_queue', '*.nc') + " " + data_path, shell=True)
+            logging.info('Moved {:} netcdf files to: {:s}'.format(len(ncfiles), data_path))
             logging.info('End of QC process')
 
         return status
