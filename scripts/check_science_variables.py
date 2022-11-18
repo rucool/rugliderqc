@@ -2,11 +2,12 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 10/4/2022
+Last modified: lgarzio on 11/17/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
 doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
 oxygen_concentration and optode_water_temperature are both 0.000.
+Add interpolated depth to files.
 """
 
 import os
@@ -88,7 +89,7 @@ def main(args):
             logging = setup_logger('logging', loglevel, logFile)
 
             logging.info('Starting QC process')
-            logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
+            logging.info('Checking for science variables and interpolating depth: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get all of the possible CTD variable names from the config file
             ctd_config_file = os.path.join(qc_config_root, 'ctd_variables.yml')
@@ -139,6 +140,20 @@ def main(args):
                     status = 1
                     continue
 
+                # interpolate depth
+                df = ds.depth.to_dataframe()
+                depth_interp = df['depth'].interpolate(method='linear', limit_direction='both', limit=2).values
+
+                attrs = ds.depth.attrs.copy()
+                attrs['ancillary_variables'] = f'{attrs["ancillary_variables"]} depth'
+                attrs['comment'] = f'Linear interpolated depth.'
+                attrs['long_name'] = 'Interpolated Depth'
+
+                da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
+                                  name='depth_interpolated', attrs=attrs)
+                da.encoding = ds.depth.encoding
+                ds['depth_interpolated'] = da
+
                 # check for pressure
                 ds_pressure_vars = list(set(ds.data_vars).intersection(set(pressure_vars)))
 
@@ -162,9 +177,11 @@ def main(args):
                     # Set DO values to fill values where oxygen_concentration and oxygen_saturation both = 0.00
                     modified = check_zeros(oxygen_vars, ds, modified, 'oxygen_concentration', 'optode_water_temperature')
 
-                # if the file was modified, save the file and add to the summary
+                # save the file
+                ds.to_netcdf(f)
+
+                # if zeros were removed from the ds, add to the log
                 if modified > 0:
-                    ds.to_netcdf(f)
                     zeros_removed += 1
 
             logging.info('Found {:} files without CTD science variables (of {:} total files)'.format(summary, len(ncfiles)))
