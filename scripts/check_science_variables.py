@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 11/17/2022
+Last modified: lgarzio on 11/21/2022
 Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
 doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -117,9 +117,12 @@ def main(args):
                 status = 1
                 continue
 
-            pressure_vars = ['pressure', 'pressure2', 'pressure_rbr', 'rbr_pressure', 'sci_water_pressure']
-            sci_vars = ['conductivity', 'conductivity2', 'conductivity_rbr', 'rbr_conductivity',
-                        'temperature', 'temperature2', 'temperature_rbr', 'rbr_temperature']
+            sci_vars = ['pressure', 'pressure2', 'pressure_rbr', 'rbr_pressure', 'sci_water_pressure',
+                        'conductivity', 'conductivity2', 'conductivity_rbr', 'rbr_conductivity',
+                        'temperature', 'temperature2', 'temperature_rbr', 'rbr_temperature',
+                        'oxygen_concentration', 'oxygen_saturation',
+                        'cdom', 'chlorophyll_a',
+                        'sbe41n_ph_electrode_voltage']
 
             # Iterate through files and find duplicated timestamps
             summary = 0
@@ -154,22 +157,14 @@ def main(args):
                 da.encoding = ds.depth.encoding
                 ds['depth_interpolated'] = da
 
-                # check for pressure
-                ds_pressure_vars = list(set(ds.data_vars).intersection(set(pressure_vars)))
+                # check for science variables
+                ds_sci_vars = list(set(ds.data_vars).intersection(set(sci_vars)))
 
-                if len(ds_pressure_vars) == 0:
+                if len(ds_sci_vars) == 0:
                     os.rename(f, f'{f}.nosci')
-                    logging.info('Pressure not found in file: {:s}'.format(f))
+                    logging.info('Science variables not found in file: {:s}'.format(f))
                     summary += 1
                 else:
-                    # check for conductivity or temperature
-                    ds_sci_vars = list(set(ds.data_vars).intersection(set(sci_vars)))
-
-                    if len(ds_sci_vars) == 0:
-                        os.rename(f, f'{f}.nosci')
-                        logging.info('Temperature and/or conductivity not found in file: {:s}'.format(f))
-                        summary += 1
-
                     # Set CTD values to fill values where conductivity and temperature both = 0.00
                     # Try all versions of CTD variable names
                     modified = check_zeros(ctd_vars, ds, modified, 'conductivity', 'temperature')
@@ -184,7 +179,7 @@ def main(args):
                 if modified > 0:
                     zeros_removed += 1
 
-            logging.info('Found {:} files without CTD science variables (of {:} total files)'.format(summary, len(ncfiles)))
+            logging.info('Found {:} files without science variables (of {:} total files)'.format(summary, len(ncfiles)))
             logging.info('Removed 0.00 values (Teledyne fill values) for CTD and/or DO variables in {:} files (of {:} '
                          'total files)'.format(zeros_removed, len(ncfiles)))
         return status
