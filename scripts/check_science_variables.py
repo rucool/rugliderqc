@@ -109,6 +109,15 @@ def main(args):
 
             oxygen_vars = loadconfig(oxygen_config_file)
 
+            # Get list of science variables
+            science_variables = os.path.join(qc_config_root, 'science_variables.txt')
+            if not os.path.isfile(science_variables):
+                logging.error('Invalid science variables config file: {:s}.'.format(science_variables))
+                status = 1
+                continue
+
+            sci_vars = open(science_variables, 'r').read().split('\n')
+
             # List the netcdf files in qc_queue
             ncfiles = sorted(glob.glob(os.path.join(data_path, 'qc_queue', '*.nc')))
 
@@ -116,13 +125,6 @@ def main(args):
                 logging.error(' 0 files found to check: {:s}'.format(os.path.join(data_path, 'qc_queue')))
                 status = 1
                 continue
-
-            sci_vars = ['pressure', 'pressure2', 'pressure_rbr', 'rbr_pressure', 'sci_water_pressure',
-                        'conductivity', 'conductivity2', 'conductivity_rbr', 'rbr_conductivity',
-                        'temperature', 'temperature2', 'temperature_rbr', 'rbr_temperature',
-                        'oxygen_concentration', 'oxygen_saturation',
-                        'cdom', 'chlorophyll_a',
-                        'sbe41n_ph_electrode_voltage']
 
             # Iterate through files and find duplicated timestamps
             summary = 0
@@ -143,20 +145,6 @@ def main(args):
                     status = 1
                     continue
 
-                # interpolate depth
-                df = ds.depth.to_dataframe()
-                depth_interp = df['depth'].interpolate(method='linear', limit_direction='both', limit=2).values
-
-                attrs = ds.depth.attrs.copy()
-                attrs['ancillary_variables'] = f'{attrs["ancillary_variables"]} depth'
-                attrs['comment'] = f'Linear interpolated depth.'
-                attrs['long_name'] = 'Interpolated Depth'
-
-                da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
-                                  name='depth_interpolated', attrs=attrs)
-                da.encoding = ds.depth.encoding
-                ds['depth_interpolated'] = da
-
                 # check for science variables
                 ds_sci_vars = list(set(ds.data_vars).intersection(set(sci_vars)))
 
@@ -165,6 +153,21 @@ def main(args):
                     logging.info('Science variables not found in file: {:s}'.format(f))
                     summary += 1
                 else:
+                    # interpolate depth
+                    df = ds.depth.to_dataframe()
+                    depth_interp = df['depth'].interpolate(method='linear', limit_direction='both', limit=2).values
+
+                    attrs = ds.depth.attrs.copy()
+                    attrs['ancillary_variables'] = f'{attrs["ancillary_variables"]} depth'
+                    attrs['comment'] = f'Linear interpolated depth using pandas.DataFrame.interpolate'
+                    attrs['long_name'] = 'Interpolated Depth'
+                    attrs['source_sensor'] = 'depth'
+
+                    da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
+                                      name='depth_interpolated', attrs=attrs)
+                    da.encoding = ds.depth.encoding
+                    ds['depth_interpolated'] = da
+
                     # Set CTD values to fill values where conductivity and temperature both = 0.00
                     # Try all versions of CTD variable names
                     modified = check_zeros(ctd_vars, ds, modified, 'conductivity', 'temperature')
