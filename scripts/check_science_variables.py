@@ -3,8 +3,8 @@
 """
 Author: lgarzio on 12/22/2021
 Last modified: lgarzio on 11/21/2022
-Checks files for CTD science variables (pressure, conductivity and temperature). Renames files ".nosci" if the file
-doesn't contain any of those variables, or only contains pressure. Also converts CTD science variables to fill values
+Checks files for science variables listed in configuration file, and renames files ".nosci" if the file
+doesn't contain any of those variables. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
 oxygen_concentration and optode_water_temperature are both 0.000.
 Add interpolated depth to files.
