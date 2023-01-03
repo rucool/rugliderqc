@@ -282,7 +282,7 @@ def main(args):
                         try:
                             ds[testvar]
                         except KeyError:
-                            logging.error('{:s} not found in file {:s})'.format(testvar, f))
+                            logging.debug('{:s} not found in file {:s})'.format(testvar, f))
                             status = 1
                             continue
 
@@ -291,7 +291,7 @@ def main(args):
                         data_idx, pressure_idx = identify_nans(ds, testvar)
 
                         if len(data_idx) == 0:
-                            logging.error('{:s} data not found in file {:s})'.format(testvar, f))
+                            logging.debug('{:s} data not found in file {:s})'.format(testvar, f))
                             status = 1
                             continue
 
@@ -318,7 +318,7 @@ def main(args):
                         ds.close()
 
                     if len(times) == 0:
-                        logging.info('Variable not found in trajectory files: {}'.format(testvar))
+                        logging.debug('Variable not found in trajectory files: {}'.format(testvar))
                         shift_dict[testvar]['shift'] = None
                     else:
                         min_time = pd.to_datetime(np.nanmin(times)).strftime('%Y-%m-%dT%H:%M:%S')
