@@ -231,7 +231,7 @@ def main(args):
                     try:
                         ds[testvar]
                     except KeyError:
-                        logging.error('{:s} not found in file {:s})'.format(testvar, ncfiles[i]))
+                        logging.debug('{:s} not found in file {:s})'.format(testvar, ncfiles[i]))
                         status = 1
                         continue
 
@@ -242,7 +242,7 @@ def main(args):
                     data_idx, pressure_idx, flag_vals = initialize_flags(ds, testvar)
 
                     if len(data_idx) == 0:
-                        logging.error('{:s} data not found in file {:s})'.format(testvar, ncfiles[i]))
+                        logging.debug('{:s} data not found in file {:s})'.format(testvar, ncfiles[i]))
                         status = 1
                         continue
 
@@ -286,7 +286,7 @@ def main(args):
                         try:
                             ds2[testvar]
                         except KeyError:
-                            logging.error('{:s} not found in file {:s})'.format(testvar, f2))
+                            logging.debug('{:s} not found in file {:s})'.format(testvar, f2))
                             status = 1
                             # TODO should we be checking the next file? example ru30_20210510T015902Z_sbd.nc
                             # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
