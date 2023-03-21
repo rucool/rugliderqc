@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 10/4/2022
+Last modified: lgarzio on 3/21/2023
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -437,6 +437,16 @@ def main(args):
                         ds[qc_varname] = da
 
                 # TODO add location test
+
+                # update the global attribute "processing_level"
+                qartod_vars = [x for x in list(ds.data_vars) if '_qartod_' in x]
+                if len(qartod_vars) > 0:
+                    processing_level_text = 'Raw Slocum glider time-series dataset from the native data file format. ' \
+                                            'Additional quality control variables provided where applicable. ' \
+                                            'Thresholds used for quality control flags are under development.'
+                    if mode == 'delayed':
+                        processing_level_text = f'{processing_level_text} Delayed mode dataset.'
+                    ds.attrs['processing_level'] = processing_level_text
 
                 # Save the netcdf file with QC variables over the original file
                 ds.to_netcdf(f)
