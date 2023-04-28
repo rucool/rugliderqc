@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 6/14/2022
+Last modified: lgarzio on 4/28/2023
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -18,7 +18,7 @@ import copy
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import polygonize
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 np.set_printoptions(suppress=True)
 
@@ -140,17 +140,6 @@ def pressure_bins(df, interval=0.25):
     df = df.groupby('bin').median()
 
     return df
-
-
-def set_encoding(data_array, original_encoding=None):
-    """
-    Set the encoding for the QC variables based on the encoding for the variable tested
-    :param data_array: data array to which encoding is added
-    :param original_encoding: encoding dictionary from the variable tested
-    """
-    if original_encoding:
-        data_array.encoding = original_encoding
-    data_array.encoding['dtype'] = data_array.dtype
 
 
 def main(args):
@@ -503,7 +492,7 @@ def main(args):
                         da = xr.DataArray(shifted_data.astype(data.dtype), coords=data.coords, dims=data.dims,
                                           name=data_shift_varname, attrs=attrs)
 
-                        # Set the encoding
+                        # use the encoding from the original variable that was time shifted
                         set_encoding(da, original_encoding=data.encoding)
 
                         # Add the shifted data to the dataset
@@ -514,7 +503,7 @@ def main(args):
 
                         comment = 'Optimal time shift (seconds) determined by grouping down and up profiles for one ' \
                                   'glider segment, then minimizing the area between the ' \
-                                  'profiles by testing time shifts between 0 and {} seconds. This is a preliminary ' \
+                                  'profiles by testing time shifts between 0 and {} seconds.  This is a preliminary ' \
                                   'variable currently under development.'.format(seconds)
 
                         # set attributes
@@ -530,8 +519,8 @@ def main(args):
                         da = xr.DataArray(shift_vals.astype('float32'), coords=data.coords, dims=data.dims,
                                           name=shift_varname, attrs=attrs)
 
-                        # Set the encoding
-                        set_encoding(da, original_encoding=data.encoding)
+                        # define variable encoding
+                        set_encoding(da)
 
                         # Add the optimal shift to the original dataset
                         ds[shift_varname] = da

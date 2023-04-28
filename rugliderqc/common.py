@@ -4,6 +4,7 @@ import os
 import re
 import pytz
 from dateutil import parser
+from netCDF4 import default_fillvals
 
 
 def find_glider_deployment_datapath(logger, deployment, deployments_root, dataset_type, cdm_data_type, mode):
@@ -73,3 +74,26 @@ def find_glider_deployments_rootdir(logger, test):
         return 1, 1
 
     return data_home, deployments_root
+
+
+def set_encoding(data_array, original_encoding=None):
+    """
+    Define encoding for a data array, using the original encoding from another variable (if applicable)
+    :param data_array: data array to which encoding is added
+    :param original_encoding: optional encoding dictionary from the parent variable
+    (e.g. use the encoding from "depth" for the new depth_interpolated variable)
+    """
+    if original_encoding:
+        data_array.encoding = original_encoding
+
+    try:
+        encoding_dtype = data_array.encoding['dtype']
+    except KeyError:
+        data_array.encoding['dtype'] = data_array.dtype
+
+    try:
+        encoding_fillvalue = data_array.encoding['_FillValue']
+    except KeyError:
+        # set the fill value using netCDF4.default_fillvals
+        data_type = f'{data_array.dtype.kind}{data_array.dtype.itemsize}'
+        data_array.encoding['_FillValue'] = default_fillvals[data_type]

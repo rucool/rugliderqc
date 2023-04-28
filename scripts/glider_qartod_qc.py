@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 3/21/2023
+Last modified: lgarzio on 4/28/2023
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -22,7 +22,7 @@ from ioos_qc.results import collect_results
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 
 
@@ -94,15 +94,6 @@ def define_gross_flatline_config(instrument_name, model_name):
         config_filename = 'no_filename_specified'
 
     return config_filename
-
-
-def set_encoding(data_array):
-    """
-    Set the data type encoding for the QC variables
-    :param data_array: data array to which encoding is added
-    """
-    data_array.encoding['dtype'] = data_array.dtype
-    #data_array.encoding['_FillValue'] = np.int32(-999)
 
 
 def set_qartod_attrs(test, sensor, thresholds):
@@ -245,7 +236,7 @@ def main(args):
                                           name=qc_varname,
                                           attrs=attrs)
 
-                        # Set the encoding
+                        # define variable encoding
                         set_encoding(da)
 
                         # Add gross/flatline QC variable to the original dataset
@@ -281,7 +272,7 @@ def main(args):
                 da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                   name=qc_varname, attrs=attrs)
 
-                # Set the encoding
+                # define variable encoding
                 set_encoding(da)
 
                 # Add QC variable to the original dataset
@@ -430,7 +421,7 @@ def main(args):
                         da = xr.DataArray(flag_vals.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                           name=qc_varname, attrs=attrs)
 
-                        # Set the encoding
+                        # define variable encoding
                         set_encoding(da)
 
                         # Add QC variable to the original dataset

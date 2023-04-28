@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 11/21/2022
+Last modified: lgarzio on 4/28/2023
 Checks files for science variables listed in configuration file, and renames files ".nosci" if the file
 doesn't contain any of those variables. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -16,7 +16,7 @@ import sys
 import glob
 import xarray as xr
 import numpy as np
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
 
@@ -165,7 +165,10 @@ def main(args):
 
                     da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
                                       name='depth_interpolated', attrs=attrs)
-                    da.encoding = ds.depth.encoding
+
+                    # use the encoding from the original depth variable
+                    set_encoding(da, original_encoding=ds.depth.encoding)
+
                     ds['depth_interpolated'] = da
 
                     # Set CTD values to fill values where conductivity and temperature both = 0.00

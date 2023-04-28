@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 3/26/2022
+Last modified: lgarzio on 4/28/2023
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -12,7 +12,7 @@ import sys
 import glob
 import numpy as np
 import xarray as xr
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 np.set_printoptions(suppress=True)
 
@@ -129,8 +129,8 @@ def main(args):
                     da = xr.DataArray(summary_flag.astype('int32'), coords=ds[sensor].coords, dims=ds[sensor].dims,
                                       name=qc_varname, attrs=attrs)
 
-                    # set encoding data type
-                    da.encoding['dtype'] = da.dtype
+                    # define variable encoding
+                    set_encoding(da)
 
                     # Add summary variable to dataset
                     ds[qc_varname] = da

@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 3/26/2022
+Last modified: lgarzio on 4/28/2023
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -16,7 +16,7 @@ from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import polygonize
 from ioos_qc import qartod
 from ioos_qc.utils import load_config_as_dict as loadconfig
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 np.set_printoptions(suppress=True)
 
@@ -77,8 +77,8 @@ def add_da(dataset, flag_array, attributes, test_varname, qc_variable_name):
     da = xr.DataArray(flag_array.astype('int32'), coords=dataset[test_varname].coords, dims=dataset[test_varname].dims,
                       name=qc_variable_name, attrs=attributes)
 
-    # set the encoding data type
-    da.encoding['dtype'] = da.dtype
+    # define variable encoding
+    set_encoding(da)
 
     dataset[qc_variable_name] = da
 
