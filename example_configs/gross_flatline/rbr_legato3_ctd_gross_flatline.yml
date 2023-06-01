@@ -1,7 +1,7 @@
 conductivity:
     qartod:
         gross_range_test:
-            fail_span: [0, 9]
+            fail_span: [0, 8.5]
         flat_line_test:
             tolerance: 0.0001
             suspect_threshold: 120

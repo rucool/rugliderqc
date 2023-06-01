@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 4/28/2023
+Last modified: lgarzio on 5/31/2023
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -87,9 +87,22 @@ def define_gross_flatline_config(instrument_name, model_name):
     :param model_name: instrument make-model
     """
     if 'instrument_ctd' in instrument_name:
-        config_filename = f'{model_name.split(" ")[0].lower()}_ctd_gross_flatline.yml'
+        if np.logical_and('sea-bird' in model_name.lower(), 'gpctd' in model_name.lower()):
+            config_filename = 'sea-bird_gpctd_gross_flatline.yml'
+        else:
+            config_filename = 'generic_ctd_gross_flatline.yml'
+
+    elif instrument_name == 'instrument_rbrctd':
+        if np.logical_and('rbr' in model_name.lower(), 'legato3' in model_name.lower()):
+            config_filename = 'rbr_legato3_ctd_gross_flatline.yml'
+        else:
+            config_filename = 'generic_ctd_gross_flatline.yml'
+
     elif instrument_name == 'instrument_optode':
-        config_filename = f'optode{model_name.split(" ")[-1].lower()}_gross_flatline.yml'
+        if np.logical_and('aanderaa' in model_name.lower(), '4831' in model_name.lower()):
+            config_filename = 'optode_4831_gross_flatline.yml'
+        elif np.logical_and('aanderaa' in model_name.lower(), '3835' in model_name.lower()):
+            config_filename = 'optode_3835_gross_flatline.yml'
     else:
         config_filename = 'no_filename_specified'
 
@@ -194,14 +207,15 @@ def main(args):
                 instruments = [x for x in list(ds.data_vars) if 'instrument_' in x]
 
                 for inst in instruments:
-                    # Define the instrument make/model
+                    # Get the instrument make/model from attributes
                     try:
-                        model = ds[inst].make_model
+                        maker_model = f'{ds[inst].maker} {ds[inst].model}'
                     except AttributeError:
-                        logging.error('Sensor make_model not specified {:s}'.format(inst))
+                        maker_model = 'not_specified'
+                        logging.error('Sensor maker and/or model not specified {:s}'.format(inst))
 
-                    # Build the configuration filename based on the instrument, make and model
-                    qc_config_filename = define_gross_flatline_config(inst, model)
+                    # Build the configuration filename based on the instrument, maker and model
+                    qc_config_filename = define_gross_flatline_config(inst, maker_model)
 
                     qc_config_file = os.path.join(qc_config_gross_flatline, qc_config_filename)
 
