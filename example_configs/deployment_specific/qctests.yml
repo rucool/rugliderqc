@@ -1,0 +1,6 @@
+check_science_variables: True
+check_duplicate_timestamps: True
+qartod: True
+hysteresis: True
+qartod_summary: True
+time_shift: True
