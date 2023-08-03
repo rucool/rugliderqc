@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 4/28/2023
+Last modified: lgarzio on 8/2/2023
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -156,13 +156,21 @@ def main(args):
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
 
-            logging.info('Checking for CTD sensor lag: {:s}'.format(os.path.join(data_path, 'qc_queue')))
-
             # Set the deployment qc configuration path
             deployment_location = data_path.split('/data')[0]
             deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
             if not os.path.isdir(deployment_qc_config_root):
                 logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['hysteresis']:
+                    logging.warning('Not calculating CTD sensor lag, check: {:s}'.format(qctests_config_file))
+                    continue
+
+            logging.info('Checking for CTD sensor lag: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get the test thresholds from the config file for the deployment (if available) or the default
             config_file = os.path.join(deployment_qc_config_root, 'ctd_hysteresis.yml')
