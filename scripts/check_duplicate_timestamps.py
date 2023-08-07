@@ -97,26 +97,15 @@ def main(args):
                 except IndexError:
                     continue
 
-                # find the unique timestamps between the two datasets
-                unique_timestamps = list(set(ds.time.values).symmetric_difference(set(ds2.time.values)))
-
-                # find the unique timestamps in each dataset
-                check_ds = [t for t in ds.time.values if t in unique_timestamps]
-                check_ds2 = [t for t in ds2.time.values if t in unique_timestamps]
-
-                # if the unique timestamps aren't found in either dataset (i.e. timestamps are exactly the same)
-                # rename the second dataset
-                if np.logical_and(len(check_ds) == 0, len(check_ds2) == 0):
+                if set(ds2.time.values).issubset(ds.time.values):
+                    # if timestamps from ds2 are completely contained in timestamps from ds
+                    # rename ds2
                     os.rename(f2, f'{f2}.duplicate')
                     logging.info('Duplicated timestamps found in file: {:s}'.format(f2))
                     duplicates += 1
-                # if the unique timestamps aren't found in the second dataset, rename it
-                elif np.logical_and(len(check_ds) > 0, len(check_ds2) == 0):
-                    os.rename(f2, f'{f2}.duplicate')
-                    logging.info('Duplicated timestamps found in file: {:s}'.format(f2))
-                    duplicates += 1
-                # if the unique timestamps aren't found in the first dataset, rename it
-                elif np.logical_and(len(check_ds) == 0, len(check_ds2) > 0):
+                elif set(ds.time.values).issubset(ds2.time.values):
+                    # if timestamps from ds are completely contained in timestamps from ds2
+                    # rename ds
                     try:
                         os.rename(f, f'{f}.duplicate')
                         logging.info('Duplicated timestamps found in file: {:s}'.format(f))
