@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/2/2023
+Last modified: lgarzio on 8/7/2023
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -167,7 +167,8 @@ def main(args):
             if os.path.isfile(qctests_config_file):
                 qctests_config_dict = loadconfig(qctests_config_file)
                 if not qctests_config_dict['hysteresis']:
-                    logging.warning('Not calculating CTD sensor lag, check: {:s}'.format(qctests_config_file))
+                    logging.warning('Not calculating CTD sensor lag because test is turned off, check: {:s}'.format(
+                        qctests_config_file))
                     continue
 
             logging.info('Checking for CTD sensor lag: {:s}'.format(os.path.join(data_path, 'qc_queue')))

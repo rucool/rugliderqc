@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 12/17/2021
+Last modified: lgarzio on 8/7/2023
 Check two consecutive .nc files for duplicated timestamps and rename files that are full duplicates of all or part
 of another file.
 """
@@ -15,6 +15,7 @@ import numpy as np
 import xarray as xr
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
+from ioos_qc.utils import load_config_as_dict as loadconfig
 
 
 def main(args):
@@ -48,6 +49,22 @@ def main(args):
             logfilename = logfile_deploymentname(deployment, dataset_type, cdm_data_type, mode)
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
+
+            # Set the deployment qc configuration path
+            deployment_location = data_path.split('/data')[0]
+            deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
+            if not os.path.isdir(deployment_qc_config_root):
+                logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['check_duplicate_timestamps']:
+                    logging.warning(
+                        'Not checking files for duplicated timestamps because test is turned off, check: {:s}'.format(
+                            qctests_config_file))
+                    continue
 
             logging.info('Checking duplicated timestamps: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 

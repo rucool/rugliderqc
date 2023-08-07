@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 4/28/2023
+Last modified: lgarzio on 8/7/2023
 Summarize the QARTOD QC flags for each variable.
 """
 
@@ -14,6 +14,7 @@ import numpy as np
 import xarray as xr
 from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
+from ioos_qc.utils import load_config_as_dict as loadconfig
 np.set_printoptions(suppress=True)
 
 
@@ -78,6 +79,22 @@ def main(args):
             logfilename = logfile_deploymentname(deployment, dataset_type, cdm_data_type, mode)
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
+
+            # Set the deployment qc configuration path
+            deployment_location = data_path.split('/data')[0]
+            deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
+            if not os.path.isdir(deployment_qc_config_root):
+                logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['qartod_summary']:
+                    logging.warning(
+                        'Not summarizing QARTOD QC because test is turned off, check: {:s}'.format(
+                            qctests_config_file))
+                    continue
 
             logging.info('Summarizing QARTOD flags: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 

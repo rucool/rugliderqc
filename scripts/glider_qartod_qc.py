@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 5/31/2023
+Last modified: lgarzio on 8/7/2023
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -172,6 +172,22 @@ def main(args):
             logfilename = logfile_deploymentname(deployment, dataset_type, cdm_data_type, mode)
             logFile = os.path.join(deployment_location, 'proc-logs', logfilename)
             logging = setup_logger('logging', loglevel, logFile)
+
+            # Set the deployment qc configuration path
+            deployment_location = data_path.split('/data')[0]
+            deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
+            if not os.path.isdir(deployment_qc_config_root):
+                logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['qartod']:
+                    logging.warning(
+                        'Not running glider QARTOD QC because test is turned off, check: {:s}'.format(
+                            qctests_config_file))
+                    continue
 
             logging.info('Running glider QARTOD QC: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 

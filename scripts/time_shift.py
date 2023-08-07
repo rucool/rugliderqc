@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 4/28/2023
+Last modified: lgarzio on 8/7/2023
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -187,6 +187,16 @@ def main(args):
             deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
             if not os.path.isdir(deployment_qc_config_root):
                 logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['time_shift']:
+                    logging.warning(
+                        'Not calculating time shifts because test is turned off, check: {:s}'.format(
+                            qctests_config_file))
+                    continue
 
             # Get the variable names for time shifting from the config file for the deployment. If not provided,
             # optimal time shifts aren't calculated

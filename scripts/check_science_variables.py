@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 4/28/2023
+Last modified: lgarzio on 8/7/2023
 Checks files for science variables listed in configuration file, and renames files ".nosci" if the file
 doesn't contain any of those variables. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -89,6 +89,23 @@ def main(args):
             logging = setup_logger('logging', loglevel, logFile)
 
             logging.info('Starting QC process')
+
+            # Set the deployment qc configuration path
+            deployment_location = data_path.split('/data')[0]
+            deployment_qc_config_root = os.path.join(deployment_location, 'config', 'qc')
+            if not os.path.isdir(deployment_qc_config_root):
+                logging.warning('Invalid deployment QC config root: {:s}'.format(deployment_qc_config_root))
+
+            # Determine if the test should be run or not
+            qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
+            if os.path.isfile(qctests_config_file):
+                qctests_config_dict = loadconfig(qctests_config_file)
+                if not qctests_config_dict['check_science_variables']:
+                    logging.warning(
+                        'Not checking files for science vars or interpolating depth because test is turned off, check: {:s}'.format(
+                            qctests_config_file))
+                    continue
+
             logging.info('Checking for science variables and interpolating depth: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get all of the possible CTD variable names from the config file
