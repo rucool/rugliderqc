@@ -16,3 +16,6 @@ oxygen_saturation
 cdom
 chlorophyll_a
 sbe41n_ph_electrode_voltage
+sci_bsipar_par
+sci_flntu_chlor_units
+beta_700nm
