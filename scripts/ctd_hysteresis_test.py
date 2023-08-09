@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/7/2023
+Last modified: lgarzio on 8/9/2023
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -301,7 +301,7 @@ def main(args):
                             # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
                             add_da(ds, flag_vals, attrs, testvar, qc_varname)
                             summary[testvar]['not_evaluated_profiles'] += 1
-                            pass  ## check this
+                            continue
 
                         data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
 
