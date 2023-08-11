@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/9/2023
+Last modified: lgarzio on 8/11/2023
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -59,10 +59,7 @@ def initialize_flags(dataset, varname):
     # flag the missing values
     flags[np.invert(non_nan_ind)] = qartod.QartodFlags.MISSING
 
-    # identify where pressure is not nan
-    press_non_nan_ind = np.where(np.invert(np.isnan(dataset.pressure.values)))[0]
-
-    return non_nan_i, press_non_nan_ind, flags
+    return non_nan_i, flags
 
 
 def add_da(dataset, flag_array, attributes, test_varname, qc_variable_name):
@@ -248,15 +245,27 @@ def main(args):
                     kwargs = dict()
                     kwargs['thresholds'] = hysteresis_thresholds
                     attrs = set_hysteresis_attrs(qc_varname, testvar, **kwargs)
-                    data_idx, pressure_idx, flag_vals = initialize_flags(ds, testvar)
+                    data_idx, flag_vals = initialize_flags(ds, testvar)
 
                     if len(data_idx) == 0:
                         logging.debug('{:s} data not found in file {:s})'.format(testvar, ncfiles[i]))
                         status = 1
                         continue
 
+                    # apply qartod QC to pressure
+                    pressure_copy = apply_qartod_qc(ds, 'pressure')
+                    pressure_idx = np.where(np.invert(np.isnan(pressure_copy.values)))[0]
+
+                    # if the pressure values are all nan or profile spans <5 dbar, don't run test
+                    pressure_diff = np.nanmax(pressure_copy.values) - np.nanmin(pressure_copy.values)
+                    if np.logical_or(np.isnan(pressure_diff), pressure_diff < 5):
+                        # leave flag values as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                        add_da(ds, flag_vals, attrs, testvar, qc_varname)
+                        summary[testvar]['not_evaluated_profiles'] += 1
+                        continue
+
                     # determine if first profile is up or down
-                    if ds.pressure.values[pressure_idx][0] > ds.pressure.values[pressure_idx][-1]:
+                    if pressure_copy.values[pressure_idx][0] > pressure_copy.values[pressure_idx][-1]:
                         # if profile is up, test can't be run because you need a down profile paired with an up profile
                         # leave flag values as NOT_EVALUATED/UNKNOWN (2) and set the attributes
                         add_da(ds, flag_vals, attrs, testvar, qc_varname)
@@ -303,10 +312,24 @@ def main(args):
                             summary[testvar]['not_evaluated_profiles'] += 1
                             continue
 
-                        data_idx2, pressure_idx2, flag_vals2 = initialize_flags(ds2, testvar)
+                        data_idx2, flag_vals2 = initialize_flags(ds2, testvar)
+
+                        # apply qartod QC to pressure
+                        pressure_copy2 = apply_qartod_qc(ds2, 'pressure')
+                        pressure_idx2 = np.where(np.invert(np.isnan(pressure_copy2.values)))[0]
+
+                        # if the pressure values are all nan or profile spans <5 dbar, don't run test
+                        pressure_diff2 = np.nanmax(pressure_copy2.values) - np.nanmin(pressure_copy2.values)
+                        if np.logical_or(np.isnan(pressure_diff2), pressure_diff2 < 5):
+                            # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
+                            add_da(ds, flag_vals, attrs, testvar, qc_varname)
+                            add_da(ds2, flag_vals2, attrs, testvar, qc_varname)
+                            summary[testvar]['not_evaluated_profiles'] += 2
+                            f2skip += 1
+                            continue
 
                         # determine if second profile is up or down
-                        if ds2.pressure.values[pressure_idx2][0] < ds2.pressure.values[pressure_idx2][-1]:
+                        if pressure_copy2.values[pressure_idx2][0] < pressure_copy2.values[pressure_idx2][-1]:
                             # if second profile is also down, test can't be run on the first file
                             # leave flag values on the first file as NOT_EVALUATED/UNKNOWN (2) and set the attributes
                             add_da(ds, flag_vals, attrs, testvar, qc_varname)
@@ -325,60 +348,62 @@ def main(args):
                                 # otherwise, test can't be run and leave the flag values as NOT_EVALUATED/UNKNOWN (2)
                                 if np.logical_and(np.sum(~np.isnan(data_copy)) > 0, np.sum(~np.isnan(data_copy2)) > 0):
                                     # calculate the area between the two profiles
-                                    df = data_copy.to_dataframe().merge(ds.pressure.to_dataframe(), on='time')
-                                    df2 = data_copy2.to_dataframe().merge(ds2.pressure.to_dataframe(), on='time')
+                                    # merge the QC'd data and QC'd pressure into dataframes
+                                    df = data_copy.to_dataframe().merge(pressure_copy.to_dataframe(), on='time')
+                                    df2 = data_copy2.to_dataframe().merge(pressure_copy2.to_dataframe(), on='time')
+
+                                    # interpolate pressure (in the case where pressure and sci data are offset)
+                                    df['pressure'] = df['pressure'].interpolate(method='linear', limit_direction='both',
+                                                                                limit=2).values
+
+                                    df2['pressure'] = df2['pressure'].interpolate(method='linear',
+                                                                                  limit_direction='both',
+                                                                                  limit=2).values
+
+                                    # combine dataframes and drop lines with nan
                                     df = df.append(df2)
                                     df = df.dropna(subset=['pressure', testvar])
 
-                                    # convert negative pressure values to 0
-                                    pressure_copy = df.pressure.values.copy()
-                                    pressure_copy[pressure_copy < 0] = 0
-                                    pressure_range = (np.nanmax(pressure_copy) - np.nanmin(pressure_copy))
+                                    # calculate data ranges
+                                    pressure_range = np.nanmax(df.pressure) - np.nanmin(df.pressure)  # 'QCd pressure'
                                     data_range = (np.nanmax(df[testvar].values) - np.nanmin(df[testvar].values))
 
-                                    # If the profile depth range is >5 dbar and the data range is >test_threshold,
-                                    # run the test. If profile depth is <5 dbar leave flags NOT_EVALUATED/UNKNOWN (2)
-                                    # since hysteresis can't be calculated with a profile that doesn't span a
-                                    # substantial depth range (e.g. usually hovering at the surface or bottom)
-                                    if pressure_range > 5:
-                                        if data_range > hysteresis_thresholds['test_threshold']:
-                                            polygon_points = df.values.tolist()
-                                            polygon_points.append(polygon_points[0])
-                                            polygon = Polygon(polygon_points)
-                                            polygon_lines = polygon.exterior
-                                            polygon_crossovers = polygon_lines.intersection(polygon_lines)
-                                            polygons = polygonize(polygon_crossovers)
-                                            valid_polygons = MultiPolygon(polygons)
+                                    # If the data range is >test_threshold, run the test.
+                                    if data_range > hysteresis_thresholds['test_threshold']:
+                                        polygon_points = df.values.tolist()
+                                        polygon_points.append(polygon_points[0])
+                                        polygon = Polygon(polygon_points)
+                                        polygon_lines = polygon.exterior
+                                        polygon_crossovers = polygon_lines.intersection(polygon_lines)
+                                        polygons = polygonize(polygon_crossovers)
+                                        valid_polygons = MultiPolygon(polygons)
 
-                                            # normalize area between the profiles to the pressure range
-                                            area = valid_polygons.area / pressure_range
+                                        # normalize area between the profiles to the pressure range
+                                        area = valid_polygons.area / pressure_range
 
-                                            # Flag failed profiles
-                                            if area > data_range * hysteresis_thresholds['fail_threshold']:
-                                                flag = qartod.QartodFlags.FAIL
-                                                summary[testvar]['failed_profiles'] += 2
-                                            # Flag suspect profiles
-                                            elif area > data_range * hysteresis_thresholds['suspect_threshold']:
-                                                flag = qartod.QartodFlags.SUSPECT
-                                                summary[testvar]['suspect_profiles'] += 2
-                                            # Otherwise, both profiles are good
-                                            else:
-                                                flag = qartod.QartodFlags.GOOD
-                                            flag_vals[data_idx] = flag
-                                            flag_vals2[data_idx2] = flag
+                                        # Flag failed profiles
+                                        if area > data_range * hysteresis_thresholds['fail_threshold']:
+                                            flag = qartod.QartodFlags.FAIL
+                                            summary[testvar]['failed_profiles'] += 2
+                                        # Flag suspect profiles
+                                        elif area > data_range * hysteresis_thresholds['suspect_threshold']:
+                                            flag = qartod.QartodFlags.SUSPECT
+                                            summary[testvar]['suspect_profiles'] += 2
+                                        # Otherwise, both profiles are good
                                         else:
-                                            # if data range is < test_threshold, set flags to 1 (GOOD) since
-                                            # there will be no measureable hysteresis (usually in well-mixed water)
                                             flag = qartod.QartodFlags.GOOD
-                                            flag_vals[data_idx] = flag
-                                            flag_vals2[data_idx2] = flag
+                                        flag_vals[data_idx] = flag
+                                        flag_vals2[data_idx2] = flag
+                                    else:
+                                        # if data range is < test_threshold, set flags to 1 (GOOD) since
+                                        # there will be no measureable hysteresis (usually in well-mixed water)
+                                        flag = qartod.QartodFlags.GOOD
+                                        flag_vals[data_idx] = flag
+                                        flag_vals2[data_idx2] = flag
 
                                     # add data array with hysteresis flag applied
-                                    # (or flag values = NOT_EVALUATED/UNKNOWN (2) if the profile depth range is <5 dbar)
                                     add_da(ds, flag_vals, attrs, testvar, qc_varname)
                                     add_da(ds2, flag_vals2, attrs, testvar, qc_varname)
-                                    if 2. in flag_vals:
-                                        summary[testvar]['not_evaluated_profiles'] += 2
                                     f2skip += 1
 
                                 else:
@@ -424,9 +449,9 @@ def main(args):
 
             for tv in test_varnames:
                 tvs = summary[tv]
-                logging.info('{:s}: {:} not evaluated profiles found (of {:} total profiles)'.format(tv,
-                                                                                                     tvs['not_evaluated_profiles'],
-                                                                                                     len(ncfiles)))
+                logging.info('{:s}: {:} not evaluated profiles (of {:} total profiles)'.format(tv,
+                                                                                               tvs['not_evaluated_profiles'],
+                                                                                               len(ncfiles)))
                 logging.info('{:s}: {:} suspect profiles found (of {:} total profiles)'.format(tv,
                                                                                                tvs['suspect_profiles'],
                                                                                                len(ncfiles)))
