@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio 6/14/2022
+Last modified: lgarzio 8/11/2023
 This is a wrapper script that imports tools to quality control RUCOOL's glider data.
 """
 
@@ -52,6 +52,9 @@ scripts.check_duplicate_timestamps.main(parsed_args)
 
 # apply QARTOD QC
 scripts.glider_qartod_qc.main(parsed_args)
+
+# interpolate depth
+scripts.interpolate_depth.main(parsed_args)
 
 # check for severely-lagged CTD profile pairs
 scripts.ctd_hysteresis_test.main(parsed_args)

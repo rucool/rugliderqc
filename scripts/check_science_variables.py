@@ -2,12 +2,11 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 8/7/2023
+Last modified: lgarzio on 8/11/2023
 Checks files for science variables listed in configuration file, and renames files ".nosci" if the file
 doesn't contain any of those variables. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
 oxygen_concentration and optode_water_temperature are both 0.000.
-Add interpolated depth to files.
 """
 
 import os
@@ -102,7 +101,7 @@ def main(args):
                 qctests_config_dict = loadconfig(qctests_config_file)
                 if not qctests_config_dict['check_science_variables']:
                     logging.warning(
-                        'Not checking files for science vars or interpolating depth because test is turned off, check: {:s}'.format(
+                        'Not checking files for science vars because test is turned off, check: {:s}'.format(
                             qctests_config_file))
                     continue
 
@@ -170,24 +169,6 @@ def main(args):
                     logging.info('Science variables not found in file: {:s}'.format(f))
                     summary += 1
                 else:
-                    # interpolate depth
-                    df = ds.depth.to_dataframe()
-                    depth_interp = df['depth'].interpolate(method='linear', limit_direction='both', limit=2).values
-
-                    attrs = ds.depth.attrs.copy()
-                    attrs['ancillary_variables'] = f'{attrs["ancillary_variables"]} depth'
-                    attrs['comment'] = f'Linear interpolated depth using pandas.DataFrame.interpolate'
-                    attrs['long_name'] = 'Interpolated Depth'
-                    attrs['source_sensor'] = 'depth'
-
-                    da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
-                                      name='depth_interpolated', attrs=attrs)
-
-                    # use the encoding from the original depth variable
-                    set_encoding(da, original_encoding=ds.depth.encoding)
-
-                    ds['depth_interpolated'] = da
-
                     # Set CTD values to fill values where conductivity and temperature both = 0.00
                     # Try all versions of CTD variable names
                     modified = check_zeros(ctd_vars, ds, modified, 'conductivity', 'temperature')
@@ -203,7 +184,7 @@ def main(args):
                     zeros_removed += 1
 
             logging.info('Found {:} files without science variables (of {:} total files)'.format(summary, len(ncfiles)))
-            logging.info('Removed 0.00 values (Teledyne fill values) for CTD and/or DO variables in {:} files (of {:} '
+            logging.info('Removed 0.00 values (TWRC fill values) for CTD and/or DO variables in {:} files (of {:} '
                          'total files)'.format(zeros_removed, len(ncfiles)))
         return status
 
