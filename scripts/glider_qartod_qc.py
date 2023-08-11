@@ -475,6 +475,7 @@ def main(args):
                 ds.to_netcdf(f)
                 ds.close()
 
+            logging.info('QARTOD QC process finished')
     return status
 
 
