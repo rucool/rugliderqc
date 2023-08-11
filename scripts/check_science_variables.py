@@ -105,7 +105,7 @@ def main(args):
                             qctests_config_file))
                     continue
 
-            logging.info('Checking for science variables and interpolating depth: {:s}'.format(os.path.join(data_path, 'qc_queue')))
+            logging.info('Checking for science variables: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
             # Get all of the possible CTD variable names from the config file
             ctd_config_file = os.path.join(qc_config_root, 'ctd_variables.yml')

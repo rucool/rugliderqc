@@ -133,7 +133,7 @@ def main(args):
                 # save the file
                 ds.to_netcdf(f)
 
-            logging.info('Added depth_interpolated to {:} files)'.format(len(ncfiles)))
+            logging.info('Added depth_interpolated to {:} files'.format(len(ncfiles)))
 
         return status
 
