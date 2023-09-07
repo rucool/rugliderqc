@@ -103,6 +103,8 @@ def define_gross_flatline_config(instrument_name, model_name):
             config_filename = 'optode_4831_gross_flatline.yml'
         elif np.logical_and('aanderaa' in model_name.lower(), '3835' in model_name.lower()):
             config_filename = 'optode_3835_gross_flatline.yml'
+        elif np.logical_and('aanderaa' in model_name.lower(), '5014w' in model_name.lower()):
+            config_filename = 'optode_5014W_gross_flatline.yml'
         else:
             config_filename = 'no_filename_specified'
     else:
