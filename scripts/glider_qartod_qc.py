@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/7/2023
+Last modified: lnazzaro on 9/6/2023
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
