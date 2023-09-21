@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from netCDF4 import Dataset, num2date
 import pandas as pd
 import numpy as np
+from urllib.request import urlopen
 
 def main(args):
     # deployment = 'ru34-20230920T1506'
@@ -23,11 +24,12 @@ def main(args):
 
         elink = f'http://slocum-data.marine.rutgers.edu/erddap/tabledap/{deployment}-profile-sci-rt'
         try:
-            glider = Dataset(elink,'r')
-        except:
+            urlopen(elink)
+        except Exception:
             print(f"{deployment} not found on ERDDAP")
             print(' ')
             continue
+        glider = Dataset(elink,'r')
         t = num2date(glider['s.time'],units=glider['s.time'].units)
         latest_data_age = (datetime.utcnow() - max(t)).total_seconds()/60/60
         glider.close()
