@@ -22,7 +22,12 @@ def main(args):
     for deployment in args.deployments:
 
         elink = f'http://slocum-data.marine.rutgers.edu/erddap/tabledap/{deployment}-profile-sci-rt'
-        glider = Dataset(elink,'r')
+        try:
+            glider = Dataset(elink,'r')
+        except:
+            print(f"{deployment} not found on ERDDAP")
+            print(' ')
+            continue
         t = num2date(glider['s.time'],units=glider['s.time'].units)
         latest_data_age = (datetime.utcnow() - max(t)).total_seconds()/60/60
         glider.close()
@@ -64,7 +69,7 @@ if __name__ == '__main__':
     
     arg_parser.add_argument('-g', '--max_gap',
                             help='longest data gap (minutes) to allow before triggering email',
-                            default=60)
+                            default=120)
     
     arg_parser.add_argument('-r', '--ignore_recent_gaps',
                             help='amount of recent data (hours) to ignore gaps in and skip triggering email',
