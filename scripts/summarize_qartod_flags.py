@@ -2,8 +2,8 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 8/7/2023
-Summarize the QARTOD QC flags for each variable.
+Last modified: lgarzio on 10/17/2023
+Summarize the QARTOD QC flags for each variable. Excludes climatology test.
 """
 
 import os
@@ -42,7 +42,7 @@ def set_summary_qartod_attrs(sensor, ancillary_variables):
         'valid_max': np.byte(max(flag_values)),
         'ioos_qc_module': 'qartod',
         'ioos_qc_target': sensor,
-        'comment': f'Summary of the highest QARTOD flag value for all QARTOD tests for {sensor} (excluding 2/NOT_EVALUATED).'
+        'comment': f'Highest QARTOD flag value for {sensor}, excluding 2/not evaluated. Excludes climatology test.'
     }
 
     return attrs
@@ -116,8 +116,11 @@ def main(args):
                     status = 1
                     continue
 
-                # List the qartod flag variables
-                qartod_vars = [x for x in list(ds.data_vars) if '_qartod_' in x]
+                # List the qartod flag variables, excluding the climatology test
+                qartod_vars = [x for x in ds.data_vars if np.logical_and('_qartod_' in x, '_qartod_climatology' not in x)]
+
+                if len(qartod_vars) == 0:
+                    continue
 
                 # List the sensors that were QC'd
                 qc_vars = list(np.unique([x.split('_qartod_')[0] for x in qartod_vars]))
@@ -126,12 +129,12 @@ def main(args):
                 for sensor in qc_vars:
                     summary_flag = np.empty(len(ds[sensor].values))
                     summary_flag[:] = 0
-                    sensor_qartod_vars = [x for x in ds.data_vars if f'{sensor}_qartod_' in x]
+                    sensor_qartod_vars = [x for x in qartod_vars if f'{sensor}_qartod_' in x]
                     for sqv in sensor_qartod_vars:
                         # make a copy of the flags so the original array isn't changed
                         flag = ds[sqv].values.copy()
 
-                        # turn 2/NOT_EVALUATED/UNKNOWN to -1
+                        # turn 2/NOT_EVALUATED/UNKNOWN to 0
                         flag[flag == 2] = 0
 
                         summary_flag = np.maximum(summary_flag, flag)
