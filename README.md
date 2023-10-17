@@ -23,13 +23,14 @@ Python tools for quality control of real-time and delayed-mode [RUCOOL glider da
 
 This wrapper script runs:
 
-1. check_science_variables.py
-2. check_duplicate_timestamps.py
-3. glider_qartod_qc.py
-4. ctd_hysteresis_test.py
-5. summarize_qartod_flags.py
-6. time_shift.py
-7. move_nc_files.py
+1. [check_science_variables.py](https://github.com/rucool/rugliderqc/blob/master/scripts/check_science_variables.py)
+2. [check_duplicate_timestamps.py](https://github.com/rucool/rugliderqc/blob/master/scripts/check_duplicate_timestamps.py)
+3. [glider_qartod_qc.py](https://github.com/rucool/rugliderqc/blob/master/scripts/glider_qartod_qc.py)
+4. [interpolate_depth.py](https://github.com/rucool/rugliderqc/blob/master/scripts/interpolate_depth.py)
+5. [ctd_hysteresis_test.py](https://github.com/rucool/rugliderqc/blob/master/scripts/ctd_hysteresis_test.py)
+5. [summarize_qartod_flags.py](https://github.com/rucool/rugliderqc/blob/master/scripts/summarize_qartod_flags.py)
+6. [time_shift.py](https://github.com/rucool/rugliderqc/blob/master/scripts/time_shift.py)
+7. [move_nc_files.py](https://github.com/rucool/rugliderqc/blob/master/scripts/move_nc_files.py)
 
 ## Acknowledgements
 
