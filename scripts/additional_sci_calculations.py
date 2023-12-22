@@ -65,6 +65,8 @@ def apply_qc(dataset, varname):
 
 
 def calculate_ph(dataset, varname, log):
+    data = apply_qc(dataset, varname)
+
     # get the calibration information
     try:
         cc = dataset.instrument_pH.attrs['calibration_coefficients']
@@ -79,8 +81,6 @@ def calculate_ph(dataset, varname, log):
         log.error('Cannot calculate pH without calibration information')
     else:
         cc = literal_eval(cc)
-        data = apply_qc(dataset, varname)
-
         pressure = dataset.pressure  # pressure in dbar (as of 12/21/2023 the units in the files are incorrect (bar))
         temp = apply_qc(dataset, 'temperature')
         sal = apply_qc(dataset, 'salinity')
