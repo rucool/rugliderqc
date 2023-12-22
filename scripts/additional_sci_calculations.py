@@ -199,6 +199,7 @@ def main(args):
 
             # Iterate through files, apply QC to relevant variables
             for f in ncfiles:
+                file_modified = 0
                 try:
                     with xr.open_dataset(f) as ds:
                         ds = ds.load()
@@ -232,13 +233,16 @@ def main(args):
 
                         ds[vardict['nc_var_name']] = da
 
+                        file_modified += 1
+
                         if vardict['nc_var_name'] not in calculated_vars:
                             calculated_vars.append(vardict['nc_var_name'])
                     except KeyError:
                         continue
 
-                # save the file
-                ds.to_netcdf(f)
+                # save the file if variables were added
+                if file_modified > 0:
+                    ds.to_netcdf(f)
 
             logging.info(f'Finished calculating additional science variables: {calculated_vars}')
 
