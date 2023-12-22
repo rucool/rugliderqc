@@ -66,6 +66,9 @@ scripts.summarize_qartod_flags.main(parsed_args)
 # requires a deployment time_shift.yml config file in ./glider-deployment/config/qc to run
 scripts.time_shift.main(parsed_args)
 
+# calculate additional science variables (pH and dissolved oxygen in mg/L)
+scripts.additional_sci_calculations.main(parsed_args)
+
 # move the files to the parent directory to be sent to ERDDAP
 scripts.move_nc_files.main(parsed_args)
 

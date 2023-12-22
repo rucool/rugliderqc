@@ -1,3 +1,4 @@
+additional_sci_calculations: True
 check_science_variables: True
 check_duplicate_timestamps: True
 qartod: True
