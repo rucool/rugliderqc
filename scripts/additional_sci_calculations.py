@@ -106,9 +106,12 @@ def calculate_ph(dataset, varname, log):
                  cc['f3'], cc['f2'], cc['f1'], 0], df.pressure_interp)
             k2 = [cc['k2f3'], cc['k2f2'], cc['k2f1'], cc['k2f0']]
         except KeyError:
-            # 6-order polynomial
-            f_p = np.polyval([cc['f6'], cc['f5'], cc['f4'], cc['f3'], cc['f2'], cc['f1'], 0], df.pressure_interp)
-            k2 = cc['k2']
+            try:
+                # 6-order polynomial
+                f_p = np.polyval([cc['f6'], cc['f5'], cc['f4'], cc['f3'], cc['f2'], cc['f1'], 0], df.pressure_interp)
+                k2 = cc['k2']
+            except KeyError:
+                log.error('calibration_coefficients not formatted correctly')
 
         df['f_p'] = f_p
         phfree, phtot = phcalc(df.phvolt, df.pressure_interp, df.temp_interp, df.sal_interp, cc['k0'], k2, df.f_p)
