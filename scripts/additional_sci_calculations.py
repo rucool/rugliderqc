@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 12/22/2023
+Last modified: lgarzio on 1/2/2024
 Calculate additional science variables, eg. pH and dissolved oxygen in mg/L
 """
 
@@ -244,7 +244,9 @@ def main(args):
                 if file_modified > 0:
                     ds.to_netcdf(f)
 
-            logging.info(f'Finished calculating additional science variables: {calculated_vars}')
+            if len(calculated_vars) == 0:
+                calculated_vars = ['no additional sci vars to calculate']
+            logging.info(f'Finished calculating additional science variables: {",".join(calculated_vars)}')
 
         return status
 
