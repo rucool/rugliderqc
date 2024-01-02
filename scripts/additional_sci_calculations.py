@@ -221,8 +221,8 @@ def main(args):
                         # evaluate the function specified in the config file
                         data_calculated = eval(vardict['calculation'])(ds, variable_name, logging)
 
-                        # update the original attributes with any additional attributes from the config file
-                        attrs = ds[variable_name].attrs
+                        # grab the original attributes and update with any additional attributes from the config file
+                        attrs = ds[variable_name].attrs.copy()
                         attrs.update(vardict['attrs'])
 
                         da = xr.DataArray(data_calculated, coords=ds[variable_name].coords, dims=ds[variable_name].dims,
