@@ -3,10 +3,11 @@ oxygen_concentration_shifted:
   nc_var_name: oxygen_concentration_shifted_mgL
   attrs:
     long_name: Time-lag Adjusted Dissolved Oxygen
+    standard_name: mass_concentration_of_oxygen_in_sea_water
     units: mg L-1
     observation_type: calculated
     ancillary_variables: oxygen_concentration_shifted
-    comment: Applied QC (if applicable) and transformed oxygen_concentration_shifted from umol/L to mg/L
+    comment: Applied QC (if applicable) and converted oxygen_concentration_shifted from umol/L to mg/L (O2 umol/L * 0.032 mg/umol). This is a preliminary variable under development.
 sbe41n_ph_ref_voltage_shifted:
   calculation: calculate_ph
   nc_var_name: pH
@@ -18,4 +19,4 @@ sbe41n_ph_ref_voltage_shifted:
     ancillary_variables: sbe41n_ph_ref_voltage_shifted pressure temperature salinity
     valid_min: 0.0
     valid_max: 14.0
-    comment: pH total calculated from sensor calibration coefficents, QCd and interpolated pressure, QCd and interpolated salinity, QCd and interpolated temperature and measured reference voltage shifted by an optimal time shift calculated by glider segment in order to minimize separation between glider down and upcasts.
+    comment: pH total calculated from sensor calibration coefficents, QCd and interpolated pressure, QCd and interpolated salinity, QCd and interpolated temperature and measured reference voltage shifted by an optimal time shift calculated by glider segment in order to minimize separation between glider down and upcasts. This is a preliminary variable under development.
