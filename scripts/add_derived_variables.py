@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 1/2/2024
+Last modified: lgarzio on 1/5/2024
 Calculate additional science variables, eg. pH and dissolved oxygen in mg/L
 """
 
@@ -133,6 +133,7 @@ def main(args):
     mode = args.mode
     dataset_type = args.level
     test = args.test
+    loglevel = loglevel.upper()
 
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
