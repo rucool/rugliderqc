@@ -174,9 +174,9 @@ def main(args):
             qctests_config_file = os.path.join(deployment_qc_config_root, 'qctests.yml')
             if os.path.isfile(qctests_config_file):
                 qctests_config_dict = loadconfig(qctests_config_file)
-                if not qctests_config_dict['additional_sci_calculations']:
+                if not qctests_config_dict['add_derived_variables']:
                     logging.warning(
-                        'Not calculating additional science vars because test is turned off, check: {:s}'.format(
+                        'Not calculating additional derived vars because test is turned off, check: {:s}'.format(
                             qctests_config_file))
                     continue
 
