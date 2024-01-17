@@ -16,9 +16,9 @@ from urllib.request import urlopen
 
 def main(args):
     # deployment = 'ru34-20230920T1506'
-    max_data_lag = args.max_lag # hours
-    max_data_gap = args.max_gap # minutes
-    ignore_gaps_younger_than = args.ignore_recent_gaps # hours
+    max_data_lag = float(args.max_lag) # hours
+    max_data_gap = float(args.max_gap) # minutes
+    ignore_gaps_younger_than = float(args.ignore_recent_gaps) # hours
 
     for deployment in args.deployments:
 
