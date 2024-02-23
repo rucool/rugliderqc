@@ -1,0 +1,4 @@
+chlorophyll_a:
+    qartod:
+        gross_range_test:
+            fail_span: [0, 50]

@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lnazzaro on 9/6/2023
+Last modified: lgarzio on 2/23/2024
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -107,6 +107,8 @@ def define_gross_flatline_config(instrument_name, model_name):
             config_filename = 'optode_5014W_gross_flatline.yml'
         else:
             config_filename = 'no_filename_specified'
+    elif any(x in instrument_name for x in ['flbbcd', 'bb3slo', 'fl3slo', 'bbfl2s']):
+        config_filename = 'generic_flbbcd_gross_flatline.yml'
     else:
         config_filename = 'no_filename_specified'
 
