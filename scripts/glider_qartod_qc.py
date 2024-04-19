@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 2/23/2024
+Last modified: lgarzio on 4/19/2024
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -103,8 +103,12 @@ def define_gross_flatline_config(instrument_name, model_name):
             config_filename = 'optode_4831_gross_flatline.yml'
         elif np.logical_and('aanderaa' in model_name.lower(), '3835' in model_name.lower()):
             config_filename = 'optode_3835_gross_flatline.yml'
+        elif np.logical_and('aanderaa' in model_name.lower(), '3830' in model_name.lower()):
+            config_filename = 'optode_3830_gross_flatline.yml'
         elif np.logical_and('aanderaa' in model_name.lower(), '5014w' in model_name.lower()):
             config_filename = 'optode_5014W_gross_flatline.yml'
+        elif np.logical_and('aanderaa' in model_name.lower(), '5013w' in model_name.lower()):
+            config_filename = 'optode_5013W_gross_flatline.yml'
         else:
             config_filename = 'no_filename_specified'
     elif any(x in instrument_name for x in ['flbbcd', 'bb3slo', 'fl3slo', 'bbfl2s']):
