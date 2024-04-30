@@ -26,6 +26,7 @@ def calculate_flbb(scale_factor, dark_counts, output):
 
 
 def main(args):
+    filedir = args.filedir
     level = args.level
 
     now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
