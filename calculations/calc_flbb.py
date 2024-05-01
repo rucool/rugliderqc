@@ -98,7 +98,7 @@ def main(args):
                     ds[f'{calname}_bad'] = ds[calname].copy()
 
                     non_nan_ind = np.where(~np.isnan(ds[calname].values))[0]
-                    ds[calname][non_nan_ind] == cal_value
+                    ds[calname][non_nan_ind] = cal_value
 
                     if not hasattr(ds[calname], 'comment'):
                         ds[calname].attrs['comment'] = add_comment_cc
