@@ -2,7 +2,7 @@
 
 """
 Author: Lori Garzio on 4/25/2024
-Last modified: 4/30/2024
+Last modified: 5/8/2024
 Re-calculate flbb variables (chl-a, cdom, backscatter) with corrected calibration coefficients and write over the
 existing files
 """
@@ -98,6 +98,8 @@ def main(args):
                     ds[f'{calname}_bad'] = ds[calname].copy()
 
                     non_nan_ind = np.where(~np.isnan(ds[calname].values))[0]
+                    if 'Mnodim' in ds[calname].units:
+                        cal_value = cal_value * 10e5
                     ds[calname][non_nan_ind] = cal_value
 
                     if not hasattr(ds[calname], 'comment'):
