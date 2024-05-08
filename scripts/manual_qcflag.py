@@ -88,6 +88,7 @@ def main(args):
 
             # Iterate through files, and add manual QC flags
             for f in ncfiles:
+                logging.info(f)
                 now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
                 file_modified = 0
                 try:
