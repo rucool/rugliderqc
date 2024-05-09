@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 5/1/2024
-Last modified: lgarzio on 5/7/2024
+Last modified: lgarzio on 5/9/2024
 Add a manual comment to a deployment and the option to convert values to nan using the manual_flag.yml config file
 located in /home/coolgroup/slocum/deployments/YYYY/glider-YYYYMMDDTHHMM/config/qc
 """
@@ -126,10 +126,10 @@ def main(args):
                                 ds[kk]
                                 if vv['convert_to_nan']:
                                     # convert the data to NaNs between the timestamps specified in the config file
-                                    starti = ds.time.to_index().get_loc(vv['start'], method='nearest')
-                                    endi = ds.time.to_index().get_loc(vv['end'], method='nearest') + 1
-                                    replace_shape = np.shape(ds[kk].values[starti:endi])
-                                    ds[kk].values[starti:endi] = np.full(replace_shape, np.nan)
+                                    start_check = ds.time.values >= pd.to_datetime(vv['start'])
+                                    end_check = ds.time.values <= pd.to_datetime(vv['end'])
+                                    time_check = np.logical_and(start_check, end_check)
+                                    ds[kk].values[time_check] = np.nan
 
                                     file_modified += 1
 
