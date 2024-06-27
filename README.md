@@ -1,5 +1,9 @@
 # rugliderqc
-Python tools for quality control of real-time and delayed-mode [RUCOOL glider data](https://rucool.marine.rutgers.edu/data/underwater-gliders/).
+A collection of python tools to quality control real-time and delayed-mode profile-based glider NetCDF files. It uses a modified version of the [ioos_qc](https://ioos.github.io/ioos_qc/) package to add quality flag variables to the datasets that are outlined in the Required and Strongly Recommended tests in the [IOOS QC Manual of Glider Data](https://cdn.ioos.noaa.gov/media/2017/12/Manual-for-QC-of-Glider-Data_05_09_16.pdf). We have also developed additional tests to further quality control glider data, such as a [test](https://github.com/rucool/rugliderqc/blob/master/scripts/ctd_hysteresis_test.py) that flags CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
+
+This code is designed to run on profile-based glider NetCDF files with a specific file and directory structure. The files are processed to NetCDF using the [gncutils package](https://github.com/kerfoot/gncutils).
+
+Full documentation of this repo is in progress.
 
 ## Note: this repository is under development
 
