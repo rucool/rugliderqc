@@ -2,13 +2,14 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 10/17/2023
+Last modified: lgarzio on 7/12/2024
 Summarize the QARTOD QC flags for each variable. Excludes climatology test.
 """
 
 import os
 import argparse
 import sys
+import datetime as dt
 import glob
 import numpy as np
 import xarray as xr
@@ -160,6 +161,13 @@ def main(args):
                         ds[sensor].attrs['ancillary_variables'] = qc_varname
                     else:
                         ds[sensor].attrs['ancillary_variables'] = ' '.join((ds[sensor].ancillary_variables, qc_varname))
+
+                # update the history attr
+                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                if not hasattr(ds, 'history'):
+                    ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                else:
+                    ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
 
                 ds.to_netcdf(f)
                 ds.close()

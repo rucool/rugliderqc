@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 8/7/2023
+Last modified: lgarzio on 7/12/2024
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -534,6 +534,13 @@ def main(args):
 
                         # Add the optimal shift to the original dataset
                         ds[shift_varname] = da
+
+                    # update the history attr
+                    now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    if not hasattr(ds, 'history'):
+                        ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                    else:
+                        ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
 
                     ds.to_netcdf(f)
                     ds.close()

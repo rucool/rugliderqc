@@ -2,7 +2,7 @@
 
 """
 Author: Lori Garzio on 4/25/2024
-Last modified: 5/8/2024
+Last modified: 7/12/2024
 Re-calculate flbb variables (chl-a, cdom, backscatter) with corrected calibration coefficients and write over the
 existing files
 """
@@ -108,9 +108,9 @@ def main(args):
                         ds[calname].attrs['comment'] = f'{ds[calname].comment} {add_comment_cc}'
 
         if not hasattr(ds, 'history'):
-            ds.attrs['history'] = f'{now}: {os.path.realpath(__file__)}'
+            ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
         else:
-            ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.realpath(__file__)}'
+            ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
 
         # Save the netcdf file with QC variables over the original file
         ds.to_netcdf(f)

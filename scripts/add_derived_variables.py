@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 1/5/2024
+Last modified: lgarzio on 7/12/2024
 Calculate additional science variables, eg. pH and dissolved oxygen in mg/L
 """
 
@@ -10,6 +10,7 @@ import os
 import argparse
 import sys
 import glob
+import datetime as dt
 import xarray as xr
 import numpy as np
 import pandas as pd
@@ -246,6 +247,14 @@ def main(args):
 
                 # save the file if variables were added
                 if file_modified > 0:
+
+                    # update the history attr
+                    now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    if not hasattr(ds, 'history'):
+                        ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                    else:
+                        ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
+
                     ds.to_netcdf(f)
 
             if len(calculated_vars) == 0:

@@ -2,13 +2,14 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/11/2023
+Last modified: lgarzio on 7/12/2024
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
 import os
 import argparse
 import sys
+import datetime as dt
 import glob
 import numpy as np
 import xarray as xr
@@ -438,10 +439,20 @@ def main(args):
                         except (KeyError, NameError):
                             pass
 
-                # save the dataset(s)
+                # update the history attr and save the dataset(s)
+                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                if not hasattr(ds, 'history'):
+                    ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                else:
+                    ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
+
                 ds.to_netcdf(ncfiles[i])
                 del ds
                 try:
+                    if not hasattr(ds2, 'history'):
+                        ds2.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                    else:
+                        ds2.attrs['history'] = f'{ds2.attrs["history"]} {now}: {os.path.basename(__file__)}'
                     ds2.to_netcdf(f2)
                     del ds2
                 except NameError:

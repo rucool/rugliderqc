@@ -2,13 +2,14 @@
 
 """
 Author: lgarzio on 8/11/2023
-Last modified: lgarzio on 8/11/2023
+Last modified: lgarzio on 7/12/2024
 Add interpolated depth to files.
 """
 
 import os
 import argparse
 import sys
+import datetime as dt
 import glob
 import xarray as xr
 import numpy as np
@@ -131,6 +132,11 @@ def main(args):
                 ds['depth_interpolated'] = da
 
                 # save the file
+                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                if not hasattr(ds, 'history'):
+                    ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                else:
+                    ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
                 ds.to_netcdf(f)
 
             logging.info('Added depth_interpolated to {:} files'.format(len(ncfiles)))

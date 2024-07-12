@@ -2,14 +2,14 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 4/19/2024
+Last modified: lgarzio on 7/12/2024
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
 import os
 import argparse
 import sys
-from datetime import timedelta
+import datetime as dt
 import glob
 import numpy as np
 import pandas as pd
@@ -355,8 +355,8 @@ def main(args):
 
                         elif test == 'climatology_test':
                             qc_varname = f'{sensor}_qartod_climatology_test'
-                            climatology_settings = {'tspan': [c['window']['starting'] - timedelta(days=2),
-                                                              c['window']['ending'] + timedelta(days=2)],
+                            climatology_settings = {'tspan': [c['window']['starting'] - dt.timedelta(days=2),
+                                                              c['window']['ending'] + dt.timedelta(days=2)],
                                                     'fspan': None, 'vspan': None, 'zspan': None}
 
                             # if no set depth range, apply thresholds to full profile depth
@@ -377,8 +377,8 @@ def main(args):
                             else:
                                 # if one depth range provided, apply thresholds only to that depth range
                                 if len(np.shape(cinfo['depth_range'])) == 1:
-                                    climatology_settings = {'tspan': [c['window']['starting'] - timedelta(days=2),
-                                                                      c['window']['ending'] + timedelta(days=2)],
+                                    climatology_settings = {'tspan': [c['window']['starting'] - dt.timedelta(days=2),
+                                                                      c['window']['ending'] + dt.timedelta(days=2)],
                                                             'fspan': cinfo['depth_range'],
                                                             'vspan': None, 'zspan': None}
 
@@ -397,8 +397,8 @@ def main(args):
                                 else:  # if different thresholds for multiple depth ranges, loop through each
                                     flag_vals = 2 * np.ones(np.shape(data))
                                     for z_int in range(len(cinfo['depth_range'])):
-                                        climatology_settings = {'tspan': [c['window']['starting'] - timedelta(days=2),
-                                                                          c['window']['ending'] + timedelta(days=2)],
+                                        climatology_settings = {'tspan': [c['window']['starting'] - dt.timedelta(days=2),
+                                                                          c['window']['ending'] + dt.timedelta(days=2)],
                                                                 'fspan': cinfo['depth_range'][z_int],
                                                                 'vspan': None, 'zspan': None}
 
@@ -479,7 +479,12 @@ def main(args):
                         processing_level_text = f'{processing_level_text} Delayed mode dataset.'
                     ds.attrs['processing_level'] = processing_level_text
 
-                # Save the netcdf file with QC variables over the original file
+                # update the history attr, and save the netcdf file with QC variables over the original file
+                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                if not hasattr(ds, 'history'):
+                    ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
+                else:
+                    ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
                 ds.to_netcdf(f)
                 ds.close()
 

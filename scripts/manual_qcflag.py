@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 5/1/2024
-Last modified: lgarzio on 5/9/2024
+Last modified: lgarzio on 7/12/2024
 Add a manual comment to a deployment and the option to convert values to nan using the manual_flag.yml config file
 located in /home/coolgroup/slocum/deployments/YYYY/glider-YYYYMMDDTHHMM/config/qc
 """
@@ -146,9 +146,9 @@ def main(args):
                 # if the file was modified, add the script to the file history, change modified date and save the file
                 if file_modified > 0:
                     if not hasattr(ds, 'history'):
-                        ds.attrs['history'] = f'{now}: {os.path.realpath(__file__)}'
+                        ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                     else:
-                        ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.realpath(__file__)}'
+                        ds.attrs['history'] = f'{ds.attrs["history"]} {now}: {os.path.basename(__file__)}'
 
                     ds.attrs['date_modified'] = now
 
