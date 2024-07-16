@@ -3,7 +3,7 @@ A collection of python tools to quality control real-time and delayed-mode profi
 
 This code is designed to run on profile-based glider NetCDF files with a specific file and directory structure. The files are processed to NetCDF using the [gncutils package](https://github.com/kerfoot/gncutils).
 
-Full documentation of this repo is in progress.
+Full documentation of this repo can be found in the [wiki](https://github.com/rucool/rugliderqc/wiki).
 
 ## Note: this repository is under development
 
