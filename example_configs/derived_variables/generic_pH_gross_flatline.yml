@@ -1,0 +1,5 @@
+pH:
+    qartod:
+        gross_range_test:
+            suspect_span: [6.5, 9]
+            fail_span: [0, 14]

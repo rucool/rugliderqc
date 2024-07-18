@@ -1,0 +1,5 @@
+pH:
+    qartod:
+        spike_test:
+            suspect_threshold: 0.05
+            fail_threshold: 0.2

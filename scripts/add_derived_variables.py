@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 7/12/2024
+Last modified: lgarzio on 7/18/2024
 Calculate additional science variables, eg. pH and dissolved oxygen in mg/L
 """
 
@@ -14,9 +14,10 @@ import datetime as dt
 import xarray as xr
 import numpy as np
 import pandas as pd
+from itertools import chain
 from ast import literal_eval
 from rugliderqc.calc import oxygen_conversion_umol_to_mg, phcalc
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
 pd.set_option('display.width', 320, "display.max_columns", 10)
@@ -139,7 +140,7 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         # Set the default qc configuration path
@@ -149,9 +150,15 @@ def main(args):
             return 1
 
         for deployment in args.deployments:
+        # Set the path for the derived variable QC configuration files
+        qc_config_derived = os.path.join(qc_config_root, 'derived_variables')
+        if not os.path.isdir(qc_config_derived):
+            logging_base.warning('Invalid QC config path for derived variables: {:s}'.format(qc_config_derived))
+            return 1
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -200,7 +207,7 @@ def main(args):
 
             logging.info('Calculating additional science data: {:s}'.format(os.path.join(data_path, 'qc_queue')))
 
-            calculated_vars = []
+            new_vars_final = []
 
             # Iterate through files, apply QC to relevant variables
             for f in ncfiles:
@@ -219,6 +226,8 @@ def main(args):
                     status = 1
                     continue
 
+                original_vars = list(ds.data_vars)
+
                 for pv in proc_vars.items():
                     variable_name = pv[0]
                     vardict = pv[1]
@@ -234,16 +243,42 @@ def main(args):
                                           name=vardict['nc_var_name'], attrs=attrs)
 
                         # use the encoding from the original data variable
-                        set_encoding(da, original_encoding=ds[variable_name].encoding)
+                        cf.set_encoding(da, original_encoding=ds[variable_name].encoding)
 
                         ds[vardict['nc_var_name']] = da
 
                         file_modified += 1
 
-                        if vardict['nc_var_name'] not in calculated_vars:
-                            calculated_vars.append(vardict['nc_var_name'])
+                        # run QC if specified in the sciencevar_processing.yml config file
+                        try:
+                            qc_config_file_list = vardict['runqc']
+                            for qcf in qc_config_file_list:
+                                # QC configuration filename
+                                qc_config_file = os.path.join(qc_config_derived, qcf)
+
+                                if not os.path.isfile(qc_config_file):
+                                    logging.error('Invalid QC config file: {:s}.'.format(qc_config_file))
+                                    status = 1
+                                    continue
+
+                                if 'gross_flatline' in qcf:
+                                    # run IOOS QC gross range/flatline tests according to the specs in the config file
+                                    # this adds the QC variables to the dataset
+                                    cf.run_ioos_qc_gross_flatline(ds, qc_config_file)
+                                elif 'spike' in qcf:
+                                    # run IOOS QC spike test according to the specs in the config file
+                                    # this adds the QC variables to the dataset
+                                    cf.run_ioos_qc_spike(ds, qc_config_file)
+
+                        except KeyError:
+                            continue
+
                     except KeyError:
                         continue
+
+                new_vars = list(set(list(ds.data_vars)) - set(original_vars))
+                if len(new_vars) > 0:
+                    new_vars_final.append(new_vars)
 
                 # save the file if variables were added
                 if file_modified > 0:
@@ -257,9 +292,11 @@ def main(args):
 
                     ds.to_netcdf(f)
 
-            if len(calculated_vars) == 0:
-                calculated_vars = ['no additional sci vars to calculate']
-            logging.info(f'Finished calculating additional science variables: {",".join(calculated_vars)}')
+            if len(new_vars_final) == 0:
+                new_vars_final = ['no additional sci vars to calculate']
+            else:
+                new_vars_final = list(set(chain(*new_vars_final)))
+            logging.info(f'Finished calculating additional science variables: {",".join(new_vars_final)}')
 
         return status
 

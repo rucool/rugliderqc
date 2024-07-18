@@ -20,3 +20,4 @@ sbe41n_ph_ref_voltage_shifted:
     valid_min: 0.0
     valid_max: 14.0
     comment: pH total calculated from sensor calibration coefficents, QCd and interpolated pressure, QCd and interpolated salinity, QCd and interpolated temperature and measured reference voltage shifted by an optimal time shift calculated by glider segment in order to minimize separation between glider down and upcasts. This is a preliminary variable under development.
+  runqc: ['generic_pH_gross_flatline.yml', 'generic_pH_spike_test.yml']
