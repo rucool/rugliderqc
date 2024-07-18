@@ -149,13 +149,13 @@ def main(args):
             logging_base.warning('Invalid QC config root: {:s}'.format(qc_config_root))
             return 1
 
-        for deployment in args.deployments:
         # Set the path for the derived variable QC configuration files
         qc_config_derived = os.path.join(qc_config_root, 'derived_variables')
         if not os.path.isdir(qc_config_derived):
             logging_base.warning('Invalid QC config path for derived variables: {:s}'.format(qc_config_derived))
             return 1
 
+        for deployment in args.deployments:
 
             data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
                                                                                 dataset_type, cdm_data_type, mode)
