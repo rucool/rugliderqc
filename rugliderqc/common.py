@@ -152,6 +152,10 @@ def run_ioos_qc_spike(ds, qc_config_file):
             attrs = set_qartod_attrs('spike_test', variable_name, spike_settings)
             da = xr.DataArray(flag_vals.astype('int32'), coords=data.coords, dims=data.dims, attrs=attrs,
                               name=qc_varname)
+
+            # define variable encoding
+            set_encoding(da)
+
             # Add the QC variable to the dataset
             ds[qc_varname] = da
 
