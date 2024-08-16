@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 7/12/2024
+Last modified: lgarzio on 8/16/2024
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -288,18 +288,19 @@ def main(args):
 
                 # convert the depth_rating in the file (meters) to dbar before comparison with the pressure variable
                 try:
-                    depth_rating = float("".join(filter(str.isdigit, ds.platform.depth_rating)))
+                    depth_rating = float("".join(filter(str.isdigit, ds.platform.depth_rating))) * 1.05
                 except ValueError:
-                    # if depth rating isn't specified in the file, depth rating is the max glider depth (1000m)
-                    depth_rating = float(1000)
+                    # if depth rating isn't specified in the file, depth rating is the max glider depth rating (1050m)
+                    depth_rating = float(1050)
                 pressure_rating = gsw.p_from_z(-depth_rating, np.nanmean(ds.profile_lat.values))
-                cinfo = {'fail_span': [0, pressure_rating]}
+                # cinfo = {'fail_span': [0, pressure_rating]}
+                cinfo = {'suspect_span': [0, pressure_rating], 'fail_span': [0, pressure_rating * 2]}
                 qc_varname = f'{sensor}_qartod_gross_range_test'
                 flag_vals = qartod.gross_range_test(inp=ds[sensor].values,
                                                     **cinfo)
 
                 # Define QC variable attributes, add a comment about the conversion from depth_rating in meters to dbar
-                cinfo = {'fail_span': [0, int(depth_rating)]}
+                cinfo = {'suspect_span': [0, int(depth_rating)], 'fail_span': [0, int(depth_rating * 2)]}
                 attrs = set_qartod_attrs(test, sensor, cinfo)
                 attrs['comment'] = 'Glider depth rating (m) in flag_configurations converted to pressure (dbar) from ' \
                                    'pressure and profile_lat using gsw.p_from_z'
