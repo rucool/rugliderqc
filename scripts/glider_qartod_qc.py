@@ -22,7 +22,7 @@ from ioos_qc.results import collect_results
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding, set_qartod_attrs
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 
 
@@ -117,36 +117,6 @@ def define_gross_flatline_config(instrument_name, model_name):
         config_filename = 'no_filename_specified'
 
     return config_filename
-
-
-def set_qartod_attrs(test, sensor, thresholds):
-    """
-    Define the QARTOD QC variable attributes
-    :param test: QARTOD QC test
-    :param sensor: sensor variable name (e.g. conductivity)
-    :param thresholds: flag thresholds from QC configuration files
-    """
-
-    flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
-    flag_values = [1, 2, 3, 4, 9]
-    standard_name = f'{test}_quality_flag'  # 'flat_line_test_quality_flag'
-    long_name = f'{" ".join([x.capitalize() for x in test.split("_")])} Quality Flag'
-
-    # Defining gross/flatline QC variable attributes
-    attrs = {
-        'standard_name': standard_name,
-        'long_name': long_name,
-        'flag_values': np.byte(flag_values),
-        'flag_meanings': flag_meanings,
-        'flag_configurations': str(thresholds),
-        'valid_min': np.byte(min(flag_values)),
-        'valid_max': np.byte(max(flag_values)),
-        'ioos_qc_module': 'qartod',
-        'ioos_qc_test': f'{test}',
-        'ioos_qc_target': sensor,
-    }
-
-    return attrs
 
 
 def main(args):
