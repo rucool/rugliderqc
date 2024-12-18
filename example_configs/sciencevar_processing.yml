@@ -1,6 +1,7 @@
 oxygen_concentration_shifted:
   calculation: convert_do_mgL
   nc_var_name: oxygen_concentration_shifted_mgL
+  use_sourcevar_attrs: True
   attrs:
     long_name: Time-lag Adjusted Dissolved Oxygen
     standard_name: mass_concentration_of_oxygen_in_sea_water
@@ -11,6 +12,7 @@ oxygen_concentration_shifted:
 sbe41n_ph_ref_voltage_shifted:
   calculation: calculate_ph
   nc_var_name: pH
+  use_sourcevar_attrs: True
   attrs:
     long_name: Time-lag Adjusted pH
     standard_name: sea_water_ph_reported_on_total_scale
@@ -19,5 +21,25 @@ sbe41n_ph_ref_voltage_shifted:
     ancillary_variables: sbe41n_ph_ref_voltage_shifted pressure temperature salinity
     valid_min: 0.0
     valid_max: 14.0
-    comment: pH total calculated from sensor calibration coefficents, QCd and interpolated pressure, QCd and interpolated salinity, QCd and interpolated temperature and measured reference voltage shifted by an optimal time shift calculated by glider segment in order to minimize separation between glider down and upcasts. This is a preliminary variable under development.
+    comment: pH on the total scale calculated from sensor calibration coefficents, QCd and interpolated pressure, QCd and interpolated salinity, QCd and interpolated temperature and measured reference voltage shifted by an optimal time shift calculated by glider segment in order to minimize separation between glider down and upcasts. This is a preliminary variable under development.
   runqc: ['generic_pH_gross_flatline.yml', 'generic_pH_spike_test.yml']
+pH:
+  calculation: calculate_ta
+  nc_var_name: total_alkalinity
+  use_sourcevar_attrs: False
+  attrs:
+    long_name: Total Alkalinity
+    units: umol/kg
+    observation_type: calculated
+    ancillary_variables: salinity
+    comment: 'Estimated from salinity using a linear relationship (TA = m * salinity + b) with the following seasonal coefficients: (-insert_coefficients-) determined from in-situ water sampling data taken during glider deployments and recoveries in addition to ship-based water samples in the Mid-Atlantic Bight region as described in Wright-Fairbanks et al 2020 https://doi.org/10.1029/2020JC016505'
+total_alkalinity:
+  calculation: calculate_omega
+  nc_var_name: aragonite_saturation_state
+  use_sourcevar_attrs: False
+  attrs:
+    long_name: Aragonite Saturation State
+    units: '1'
+    observation_type: calculated
+    ancillary_variables: pressure, temperature, salinity, pH, total_alkalinity
+    comment: Calculated using PyCO2SYS (Humphreys et al. (2020) doi:10.5281/zenodo.3744275, Lewis and Wallace (1998)) with inputs of pH on the total scale, total alkalinity, in situ salinity, temperature, and pressure, K1 and K2 dissociation constants defined by Merbach and refit by Dickson and Millero, KSO4 dissociation constant of Dickson, KHF dissociation constant of Perez and Fraga, and borate-to-salinity ratio of Uppstrom (1979)

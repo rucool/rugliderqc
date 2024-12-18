@@ -2,8 +2,9 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 7/18/2024
-Calculate additional science variables, eg. pH and dissolved oxygen in mg/L
+Last modified: lgarzio on 12/17/2024
+Calculate additional science variables defined in the sciencevar_processing.yml config file,
+eg. dissolved oxygen in mg/L, pH, TA, and omega
 """
 
 import os
@@ -16,10 +17,13 @@ import numpy as np
 import pandas as pd
 from itertools import chain
 from ast import literal_eval
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 from rugliderqc.calc import oxygen_conversion_umol_to_mg, phcalc
 import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
+import PyCO2SYS as pyco2
 pd.set_option('display.width', 320, "display.max_columns", 10)
 
 
@@ -37,7 +41,13 @@ def apply_qc(dataset, varname):
         qv_idx = np.where(np.logical_or(qv_vals == 3, qv_vals == 4))[0]
         datacopy[qv_idx] = np.nan
     except KeyError:
-        print(f'No QARTOD QC variables available for {varname}')
+        print(f'No QARTOD QC summary flag available for {varname}')
+        # see if there are any other QC variables if a summary flag isn't available
+        qv_vars = [x for x in list(dataset.data_vars) if f'{varname}_qartod_' in x]
+        for qv in qv_vars:
+            qv_vals = dataset[qv].values
+            qv_idx = np.where(np.logical_or(qv_vals == 3, qv_vals == 4))[0]
+            datacopy[qv_idx] = np.nan
 
     # remove invalid pH reference voltages
     if 'ph_ref_voltage' in varname:
@@ -83,7 +93,7 @@ def calculate_ph(dataset, varname, log):
         log.error('Cannot calculate pH without calibration information')
     else:
         cc = literal_eval(cc)
-        pressure = dataset.pressure  # pressure in dbar (as of 12/21/2023 the units in the files are incorrect (bar))
+        pressure = dataset.pressure  # pressure in dbar (the units in the files are incorrect (bar))
         temp = apply_qc(dataset, 'temperature')
         sal = apply_qc(dataset, 'salinity')
 
@@ -119,6 +129,93 @@ def calculate_ph(dataset, varname, log):
         phfree, phtot = phcalc(df.phvolt, df.pressure_interp, df.temp_interp, df.sal_interp, cc['k0'], k2, df.f_p)
 
         return np.array(phtot)
+
+
+def calculate_omega(dataset, varname, log):
+    try:
+        # TODO start here check this
+        data_dict = dict(
+            salinity=apply_qc(dataset, 'salinity').values,
+            pressure=apply_qc(dataset, 'pressure').values,
+            temperature=apply_qc(dataset, 'temperature').values,
+            ph=apply_qc(dataset, 'pH').values,
+            ta=dataset.total_alkalinity.values
+        )
+
+        # interpolate CTD variables for omega calculation
+        df = pd.DataFrame(data_dict)
+        sal_interp = df['salinity'].interpolate(method='linear', limit_direction='both', limit=2)
+        pressure_interp = df['pressure'].interpolate(method='linear', limit_direction='both', limit=2)
+        temperature_interp = df['temperature'].interpolate(method='linear', limit_direction='both', limit=2)
+
+        # run CO2sys
+        par1 = df['ta']  # Total Alkalinity
+        par1_type = 1  # parameter 1 type (TA)
+        par2 = df['ph']
+        par2_type = 3  # parameter 2 type (pH)
+
+        kwargs = dict(salinity=sal_interp,
+                      temperature=temperature_interp,
+                      pressure=pressure_interp,
+                      opt_pH_scale=1,
+                      opt_k_carbonic=4,
+                      opt_k_bisulfate=1,
+                      opt_total_borate=1,
+                      opt_k_fluoride=2)
+
+        results = pyco2.sys(par1, par2, par1_type, par2_type, **kwargs)
+        omega_arag = results['saturation_aragonite']  # aragonite saturation state
+
+        return omega_arag
+
+    except KeyError:
+        log.error("One or more variables (salinity, temperature, pressure, pH, total_alkalinity) not available "
+                  "in the files to calculate omega.")
+        return []
+
+
+def calculate_ta(dataset, varname, log, configfile):
+    ta = []
+    coeffs = []
+    try:
+        sal = apply_qc(dataset, 'salinity')
+        ph = apply_qc(dataset, 'pH')
+
+        # get the config file
+        cc = os.path.join(configfile, 'TA-salinity-regressions.yml')
+        configdict = loadconfig(cc)
+
+        # determine if the glider is within any regions specified
+        for region, values in configdict.items():
+            if Polygon(list(zip(values['boundaries']['longitude'], values['boundaries']['latitude']))).contains(
+                    Point(dataset.profile_lon, dataset.profile_lat)):
+                log.debug(f'profile within the {region} region')
+
+                # if the profile is within a defined boundary, determine profile season to calculate TA for that season
+                coeffs = values['coefficients']
+                season = str(np.unique(dataset['profile_time.season'])[0])
+                equation_coeffs = coeffs[season]
+
+                # interpolate salinity for TA calculation (QC already done for salinity and pH)
+                data_dict = dict(
+                    salinity=sal.values,
+                    ph=ph.values
+                )
+                df = pd.DataFrame(data_dict)
+                sal_interp = df['salinity'].interpolate(method='linear', limit_direction='both', limit=2)
+                ta = np.array(equation_coeffs['m'] * sal_interp + equation_coeffs['b'])
+
+                # TA timestamps should line up with pH timestamps
+                idx = np.isnan(df['ph'])
+                ta[idx] = np.nan
+
+        return ta, coeffs
+
+            # TODO what to do if glider is in multiple regions? should these have priorities? or are the regions never going to overlap?
+
+    except KeyError:
+        log.error("salinity not available in the files, can't calculate TA")
+        return ta, coeffs
 
 
 def convert_do_mgL(dataset, varname, log):
@@ -209,7 +306,7 @@ def main(args):
 
             new_vars_final = []
 
-            # Iterate through files, apply QC to relevant variables
+            # Iterate through files, calculate additional science variables if the raw variables are found in the files
             for f in ncfiles:
                 file_modified = 0
                 try:
@@ -228,16 +325,36 @@ def main(args):
 
                 original_vars = list(ds.data_vars)
 
-                for pv in proc_vars.items():
-                    variable_name = pv[0]
-                    vardict = pv[1]
+                for variable_name, vardict in proc_vars.items():
+                    # check if the variable required for additional processing is in the file
                     try:
-                        # evaluate the function specified in the config file
-                        data_calculated = eval(vardict['calculation'])(ds, variable_name, logging)
+                        ds[variable_name]
+                    except KeyError:
+                        continue
 
-                        # grab the original attributes and update with any additional attributes from the config file
-                        attrs = ds[variable_name].attrs.copy()
+                    # evaluate the function specified in the config file
+                    try:
+                        data_calculated = eval(vardict['calculation'])(ds, variable_name, logging)
+                    except TypeError:
+                        # calculating TA (need the config file)
+                        # Need to return TA plus the equations used to calculate TA for metadata
+                        data_calculated, attr_coeffs = eval(vardict['calculation'])(ds, variable_name, logging, qc_config_derived)
+
+                    if isinstance(data_calculated, np.ndarray):
+                        # grab the attributes from the source variable (if use_sourcevar_attrs=True in the config file)
+                        # update with any additional attributes from the config file
+                        if vardict['use_sourcevar_attrs']:
+                            attrs = ds[variable_name].attrs.copy()
+                        else:
+                            attrs = dict()
                         attrs.update(vardict['attrs'])
+
+                        # for TA, add the equation coefficients to attributes
+                        try:
+                            attrs['comment'] = attrs['comment'].replace('-insert_coefficients-', str(attr_coeffs))
+                            del attr_coeffs
+                        except NameError:
+                            print(f'no calculation coefficients to add to this variable attrs: {vardict["nc_var_name"]}')
 
                         da = xr.DataArray(data_calculated, coords=ds[variable_name].coords, dims=ds[variable_name].dims,
                                           name=vardict['nc_var_name'], attrs=attrs)
@@ -273,9 +390,6 @@ def main(args):
                         except KeyError:
                             continue
 
-                    except KeyError:
-                        continue
-
                 new_vars = list(set(list(ds.data_vars)) - set(original_vars))
                 if len(new_vars) > 0:
                     new_vars_final.append(new_vars)
@@ -284,7 +398,7 @@ def main(args):
                 if file_modified > 0:
 
                     # update the history attr
-                    now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    now = dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
                     if not hasattr(ds, 'history'):
                         ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                     else:

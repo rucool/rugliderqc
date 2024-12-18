@@ -1,0 +1,17 @@
+nyb:
+    boundaries:
+        longitude: [ -75, -71, -71, -75 ]
+        latitude: [ 37.5, 37.5, 41.5, 41.5 ]
+    coefficients:
+        DJF:
+            m: 48.71
+            b: 601.75
+        MAM:
+            m: 42.37
+            b: 817.59
+        JJA:
+            m: 50.75
+            b: 541.81
+        SON:
+            m: 46.42
+            b: 687.99
