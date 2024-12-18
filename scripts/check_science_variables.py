@@ -146,6 +146,7 @@ def main(args):
             summary = 0
             zeros_removed = 0
             for f in ncfiles:
+                logging.debug(f'{f}')
                 modified = 0
                 try:
                     with xr.open_dataset(f) as ds:

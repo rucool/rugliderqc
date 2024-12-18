@@ -79,6 +79,7 @@ def main(args):
             # Iterate through files and find duplicated timestamps
             duplicates = 0
             for i, f in enumerate(ncfiles):
+                logging.debug(f'{f}')
                 try:
                     ds = xr.open_dataset(f)
                 except OSError as e:
