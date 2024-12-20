@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 7/12/2024
+Last modified: lgarzio on 12/20/2024
 Flag CTD profile pairs that are severely lagged, which can be an indication of CTD pump issues.
 """
 
@@ -13,11 +13,12 @@ import datetime as dt
 import glob
 import numpy as np
 import xarray as xr
+import pandas as pd
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import polygonize
 from ioos_qc import qartod
 from ioos_qc.utils import load_config_as_dict as loadconfig
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 np.set_printoptions(suppress=True)
 
@@ -76,7 +77,7 @@ def add_da(dataset, flag_array, attributes, test_varname, qc_variable_name):
                       name=qc_variable_name, attrs=attributes)
 
     # define variable encoding
-    set_encoding(da)
+    cf.set_encoding(da)
 
     dataset[qc_variable_name] = da
 
@@ -128,7 +129,7 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         # Set the default qc configuration path
@@ -139,8 +140,8 @@ def main(args):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -219,7 +220,7 @@ def main(args):
                     continue
 
                 try:
-                    with xr.open_dataset(ncfiles[i]) as ds:
+                    with xr.open_dataset(ncfiles[i], decode_times=False) as ds:
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(ncfiles[i], e))
@@ -295,7 +296,7 @@ def main(args):
                         except NameError:
                             # if not, try to open the second file
                             try:
-                                with xr.open_dataset(f2) as ds2:
+                                with xr.open_dataset(f2, decode_times=False) as ds2:
                                     ds2 = ds2.load()
                             except OSError as e:
                                 logging.error('Error reading file {:s} ({:})'.format(f2, e))
@@ -339,7 +340,10 @@ def main(args):
                             # first profile is down and second profile is up
                             # determine if the end/start timestamps are < 5 minutes apart,
                             # indicating a paired yo (down-up profile pair)
-                            if ds2.time.values[0] - ds.time.values[-1] < np.timedelta64(5, 'm'):
+                            ds_time = cf.convert_epoch_ts(ds['time'])
+                            ds2_time = cf.convert_epoch_ts(ds2['time'])
+                            if ds2_time[0] - ds_time[-1] < np.timedelta64(5, 'm'):
+                            #if ds2.time.values[0] - ds.time.values[-1] < np.timedelta64(5, 'm'):
 
                                 # make a copy of the data and apply QARTOD QC flags before testing for hysteresis
                                 data_copy = apply_qartod_qc(ds, testvar)
@@ -362,7 +366,7 @@ def main(args):
                                                                                   limit=2).values
 
                                     # combine dataframes and drop lines with nan
-                                    df = df.append(df2)
+                                    df = pd.concat([df, df2])  # df = df.append(df2)
                                     df = df.dropna(subset=['pressure', testvar])
 
                                     # calculate data ranges
@@ -440,7 +444,7 @@ def main(args):
                             pass
 
                 # update the history attr and save the dataset(s)
-                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                now = dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
                 if not hasattr(ds, 'history'):
                     ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                 else:

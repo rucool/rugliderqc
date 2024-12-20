@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 12/7/2021
-Last modified: lgarzio on 8/16/2024
+Last modified: lgarzio on 12/19/2024
 Run ioos_qc QARTOD tests on processed glider NetCDF files and append the results to the original file.
 """
 
@@ -12,7 +12,6 @@ import sys
 import datetime as dt
 import glob
 import numpy as np
-import pandas as pd
 import xarray as xr
 import gsw
 from ioos_qc import qartod
@@ -22,7 +21,7 @@ from ioos_qc.results import collect_results
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding, set_qartod_attrs
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 
 
@@ -32,7 +31,8 @@ def build_global_regional_config(ds, qc_config_root):
     :param ds: glider data xarray dataset
     :param qc_config_root: root directory where QC configuration files are located
     """
-    profile_time = pd.to_datetime(ds.profile_time.values)
+    #profile_time = pd.to_datetime(ds.profile_time.values)
+    profile_time = cf.convert_epoch_ts(ds['profile_time'])
     profile_lon = ds.profile_lon.values
     profile_lat = ds.profile_lat.values
 
@@ -131,13 +131,13 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -180,7 +180,7 @@ def main(args):
             # Iterate through files and apply QC
             for f in ncfiles:
                 try:
-                    with xr.open_dataset(f) as ds:
+                    with xr.open_dataset(f, decode_times=False) as ds:
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
@@ -235,7 +235,7 @@ def main(args):
                         flag_results = cl.results.data
 
                         # Defining gross/flatline QC variable attributes
-                        attrs = set_qartod_attrs(test, sensor, c.config[sensor]['qartod'][test])
+                        attrs = cf.set_qartod_attrs(test, sensor, c.config[sensor]['qartod'][test])
                         if not hasattr(ds[sensor], 'ancillary_variables'):
                             ds[sensor].attrs['ancillary_variables'] = qc_varname
                         else:
@@ -247,7 +247,7 @@ def main(args):
                                           attrs=attrs)
 
                         # define variable encoding
-                        set_encoding(da)
+                        cf.set_encoding(da)
 
                         # Add gross/flatline QC variable to the original dataset
                         ds[qc_varname] = da
@@ -271,7 +271,7 @@ def main(args):
 
                 # Define QC variable attributes, add a comment about the conversion from depth_rating in meters to dbar
                 cinfo = {'suspect_span': [0, int(depth_rating)], 'fail_span': [0, int(depth_rating * 2)]}
-                attrs = set_qartod_attrs(test, sensor, cinfo)
+                attrs = cf.set_qartod_attrs(test, sensor, cinfo)
                 attrs['comment'] = 'Glider depth rating (m) in flag_configurations converted to pressure (dbar) from ' \
                                    'pressure and profile_lat using gsw.p_from_z'
                 if not hasattr(ds[sensor], 'ancillary_variables'):
@@ -284,7 +284,7 @@ def main(args):
                                   name=qc_varname, attrs=attrs)
 
                 # define variable encoding
-                set_encoding(da)
+                cf.set_encoding(da)
 
                 # Add QC variable to the original dataset
                 ds[qc_varname] = da
@@ -294,7 +294,7 @@ def main(args):
                 logging.debug('Using configuration file for region: {:s} and time window: {:s} to {:s}'.format(c['region'],c['window']['starting'].strftime("%b-%d"),c['window']['ending'].strftime("%b-%d")))
 
                 # run climatology, spike, rate of change, and pressure tests
-                times = ds.time.values
+                times = cf.convert_epoch_ts(ds['time'])  #times = ds.time.values
                 for sensor, config_info in c['streams'].items():
                     if sensor not in ds.data_vars:
                         continue
@@ -422,7 +422,7 @@ def main(args):
                                                                                     **cinfo)
 
                         # Define pressure/climatology/spike/rate of change QC variable attributes
-                        attrs = set_qartod_attrs(test, sensor, cinfo)
+                        attrs = cf.set_qartod_attrs(test, sensor, cinfo)
                         if not hasattr(ds[sensor], 'ancillary_variables'):
                             ds[sensor].attrs['ancillary_variables'] = qc_varname
                         else:
@@ -433,7 +433,7 @@ def main(args):
                                           name=qc_varname, attrs=attrs)
 
                         # define variable encoding
-                        set_encoding(da)
+                        cf.set_encoding(da)
 
                         # Add QC variable to the original dataset
                         ds[qc_varname] = da
@@ -451,7 +451,7 @@ def main(args):
                     ds.attrs['processing_level'] = processing_level_text
 
                 # update the history attr, and save the netcdf file with QC variables over the original file
-                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                now = dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
                 if not hasattr(ds, 'history'):
                     ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                 else:

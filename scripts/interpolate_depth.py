@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 8/11/2023
-Last modified: lgarzio on 7/12/2024
+Last modified: lgarzio on 12/20/2024
 Add interpolated depth to files.
 """
 
@@ -13,7 +13,7 @@ import datetime as dt
 import glob
 import xarray as xr
 import numpy as np
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
 
@@ -44,13 +44,13 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -93,7 +93,7 @@ def main(args):
             # Iterate through files, apply pressure QARTOD QC to depth, interpolate depth and add to files
             for f in ncfiles:
                 try:
-                    with xr.open_dataset(f) as ds:
+                    with xr.open_dataset(f, decode_times=False) as ds:
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
@@ -127,12 +127,12 @@ def main(args):
                                   name='depth_interpolated', attrs=attrs)
 
                 # use the encoding from the original depth variable
-                set_encoding(da, original_encoding=ds.depth.encoding)
+                cf.set_encoding(da, original_encoding=ds.depth.encoding)
 
                 ds['depth_interpolated'] = da
 
                 # save the file
-                now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                now = dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
                 if not hasattr(ds, 'history'):
                     ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                 else:

@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2021
-Last modified: lgarzio on 8/11/2023
+Last modified: lgarzio on 12/19/2024
 Checks files for science variables listed in configuration file, and renames files ".nosci" if the file
 doesn't contain any of those variables. Also converts CTD science variables to fill values
 if conductivity and temperature are both 0.000, and dissolved oxygen science variables to fill values if
@@ -15,7 +15,7 @@ import sys
 import glob
 import xarray as xr
 import numpy as np
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
 
@@ -61,7 +61,7 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         # Set the default qc configuration path
@@ -72,8 +72,8 @@ def main(args):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -142,14 +142,14 @@ def main(args):
                 status = 1
                 continue
 
-            # Iterate through files and find duplicated timestamps
+            # Iterate through files, check for science variables, and check for values of 0.0
             summary = 0
             zeros_removed = 0
             for f in ncfiles:
                 logging.debug(f'{f}')
                 modified = 0
                 try:
-                    with xr.open_dataset(f) as ds:
+                    with xr.open_dataset(f, decode_times=False) as ds:
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
@@ -177,7 +177,6 @@ def main(args):
                     # Set DO values to fill values where oxygen_concentration and oxygen_saturation both = 0.00
                     modified = check_zeros(oxygen_vars, ds, modified, 'oxygen_concentration', 'optode_water_temperature')
 
-                # save the file
                 ds.to_netcdf(f)
 
                 # if zeros were removed from the ds, add to the log

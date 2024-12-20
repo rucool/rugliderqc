@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 12/17/2024
+Last modified: lgarzio on 12/20/2024
 Calculate additional science variables defined in the sciencevar_processing.yml config file,
 eg. dissolved oxygen in mg/L, pH, TA, and omega
 """
@@ -133,7 +133,6 @@ def calculate_ph(dataset, varname, log):
 
 def calculate_omega(dataset, varname, log):
     try:
-        # TODO start here check this
         data_dict = dict(
             salinity=apply_qc(dataset, 'salinity').values,
             pressure=apply_qc(dataset, 'pressure').values,
@@ -193,7 +192,9 @@ def calculate_ta(dataset, varname, log, configfile):
 
                 # if the profile is within a defined boundary, determine profile season to calculate TA for that season
                 coeffs = values['coefficients']
-                season = str(np.unique(dataset['profile_time.season'])[0])
+                # season = str(np.unique(dataset['profile_time.season'])[0])
+                profile_ts = cf.convert_epoch_ts(dataset['profile_time'])
+                season = cf.return_season(profile_ts)
                 equation_coeffs = coeffs[season]
 
                 # interpolate salinity for TA calculation (QC already done for salinity and pH)
@@ -310,7 +311,7 @@ def main(args):
             for f in ncfiles:
                 file_modified = 0
                 try:
-                    with xr.open_dataset(f) as ds:
+                    with xr.open_dataset(f, decode_times=False) as ds:
                         ds = ds.load()
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(f, e))
@@ -337,7 +338,7 @@ def main(args):
                         data_calculated = eval(vardict['calculation'])(ds, variable_name, logging)
                     except TypeError:
                         # calculating TA (need the config file)
-                        # Need to return TA plus the equations used to calculate TA for metadata
+                        # Returns TA and the equations used to calculate TA (for metadata)
                         data_calculated, attr_coeffs = eval(vardict['calculation'])(ds, variable_name, logging, qc_config_derived)
 
                     if isinstance(data_calculated, np.ndarray):
