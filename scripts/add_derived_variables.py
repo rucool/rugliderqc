@@ -287,7 +287,7 @@ def main(args):
                     continue
 
             # Get variable names from the config file
-            procvar_config_file = os.path.join(qc_config_root, 'sciencevar_processing.yml')
+            procvar_config_file = os.path.join(qc_config_root, 'sciencevar_processing-test.yml')
             if not os.path.isfile(procvar_config_file):
                 logging.error('Invalid science variable config file: {:s}.'.format(procvar_config_file))
                 status = 1
