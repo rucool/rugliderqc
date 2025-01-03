@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/22/2023
-Last modified: lgarzio on 12/20/2024
+Last modified: lgarzio on 1/3/2025
 Calculate additional science variables defined in the sciencevar_processing.yml config file,
 eg. dissolved oxygen in mg/L, pH, TA, and omega
 """
@@ -222,7 +222,7 @@ def calculate_ta(dataset, varname, log, configfile):
 def convert_do_mgL(dataset, varname, log):
     data = apply_qc(dataset, varname)
     data_transformed = oxygen_conversion_umol_to_mg(data)
-    return data_transformed
+    return data_transformed.values
 
 
 def main(args):
