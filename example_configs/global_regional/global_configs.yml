@@ -2,8 +2,8 @@ contexts:
     -   priority: 5
         region: global
         window:
-            starting: 2021-01-01T00:00:00Z
-            ending: 2021-12-31T23:59:59Z
+            starting: 2021-01-01T00:00:00
+            ending: 2021-12-31T23:59:59.999999
         streams:
             conductivity:
                 qartod:

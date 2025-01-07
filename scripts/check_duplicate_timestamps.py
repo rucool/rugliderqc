@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 12/7/2021
-Last modified: lgarzio on 8/7/2023
+Last modified: lgarzio on 12/20/2024
 Check two consecutive .nc files for duplicated timestamps and rename files that are full duplicates of all or part
 of another file.
 """
@@ -13,7 +13,7 @@ import sys
 import glob
 import numpy as np
 import xarray as xr
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 from ioos_qc.utils import load_config_as_dict as loadconfig
 
@@ -30,13 +30,13 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -79,8 +79,9 @@ def main(args):
             # Iterate through files and find duplicated timestamps
             duplicates = 0
             for i, f in enumerate(ncfiles):
+                logging.debug(f'{f}')
                 try:
-                    ds = xr.open_dataset(f)
+                    ds = xr.open_dataset(f, decode_times=False)
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(ncfiles[i], e))
                     status = 1
@@ -89,7 +90,7 @@ def main(args):
                 # find the next file and compare timestamps
                 try:
                     f2 = ncfiles[i + 1]
-                    ds2 = xr.open_dataset(f2)
+                    ds2 = xr.open_dataset(f2, decode_times=False)
                 except OSError as e:
                     logging.error('Error reading file {:s} ({:})'.format(ncfiles[i + 1], e))
                     status = 1

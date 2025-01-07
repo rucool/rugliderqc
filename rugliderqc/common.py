@@ -2,7 +2,9 @@
 
 import os
 import re
+import pandas as pd
 import pytz
+from netCDF4 import num2date
 import numpy as np
 from dateutil import parser
 from netCDF4 import default_fillvals
@@ -12,6 +14,17 @@ from ioos_qc.config import Config
 from ioos_qc.streams import XarrayStream
 from ioos_qc.results import collect_results
 from ioos_qc.utils import load_config_as_dict as loadconfig
+
+
+def convert_epoch_ts(data):
+    if isinstance(data, xr.core.dataarray.DataArray):
+        time = pd.to_datetime(num2date(data.values, data.units, only_use_cftime_datetimes=False))
+    elif isinstance(data, pd.core.indexes.base.Index):
+        time = pd.to_datetime(num2date(data, 'seconds since 1970-01-01T00:00:00Z', only_use_cftime_datetimes=False))
+    elif isinstance(data, pd.core.indexes.datetimes.DatetimeIndex):
+        time = pd.to_datetime(num2date(data, 'seconds since 1970-01-01T00:00:00Z', only_use_cftime_datetimes=False))
+
+    return time
 
 
 def find_glider_deployment_datapath(logger, deployment, deployments_root, dataset_type, cdm_data_type, mode):
@@ -81,6 +94,19 @@ def find_glider_deployments_rootdir(logger, test):
         return 1, 1
 
     return data_home, deployments_root
+
+
+def return_season(ts):
+    if ts.month in [12, 1, 2]:
+        season = 'DJF'
+    elif ts.month in [3, 4, 5]:
+        season = 'MAM'
+    elif ts.month in [6, 7, 8]:
+        season = 'JJA'
+    elif ts.month in [9, 10, 11]:
+        season = 'SON'
+
+    return season
 
 
 def run_ioos_qc_gross_flatline(ds, qc_config_file):

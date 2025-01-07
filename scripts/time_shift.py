@@ -2,7 +2,7 @@
 
 """
 Author: lnazzaro and lgarzio on 3/9/2022
-Last modified: lgarzio on 7/12/2024
+Last modified: lgarzio on 12/20/2024
 Calculate and apply optimal time shifts by segment for variables defined in config files (e.g. DO and pH voltages)
 """
 
@@ -18,7 +18,7 @@ import copy
 from ioos_qc.utils import load_config_as_dict as loadconfig
 from shapely.geometry import Polygon, MultiPolygon
 from shapely.ops import polygonize
-from rugliderqc.common import find_glider_deployment_datapath, find_glider_deployments_rootdir, set_encoding
+import rugliderqc.common as cf
 from rugliderqc.loggers import logfile_basename, setup_logger, logfile_deploymentname
 np.set_printoptions(suppress=True)
 
@@ -137,7 +137,7 @@ def pressure_bins(df, interval=0.25):
 
     # calculate depth-binned median
     # used median instead of mean to account for potential unreasonable values not removed by QC
-    df = df.groupby('bin').median()
+    df = df.groupby('bin', observed=False).median()
 
     return df
 
@@ -154,7 +154,7 @@ def main(args):
     logFile_base = logfile_basename()
     logging_base = setup_logger('logging_base', loglevel, logFile_base)
 
-    data_home, deployments_root = find_glider_deployments_rootdir(logging_base, test)
+    data_home, deployments_root = cf.find_glider_deployments_rootdir(logging_base, test)
     if isinstance(deployments_root, str):
 
         # Set the default qc configuration path
@@ -165,8 +165,8 @@ def main(args):
 
         for deployment in args.deployments:
 
-            data_path, deployment_location = find_glider_deployment_datapath(logging_base, deployment, deployments_root,
-                                                                             dataset_type, cdm_data_type, mode)
+            data_path, deployment_location = cf.find_glider_deployment_datapath(logging_base, deployment, deployments_root,
+                                                                                dataset_type, cdm_data_type, mode)
 
             if not data_path:
                 logging_base.error('{:s} data directory not found:'.format(deployment))
@@ -235,7 +235,7 @@ def main(args):
             source_files = []
             for f in ncfiles:
                 try:
-                    ds = xr.open_dataset(f)
+                    ds = xr.open_dataset(f, decode_times=False)
                     source_file = ds.source_file.source_file
                     ds.close()
                 except OSError as e:
@@ -272,7 +272,7 @@ def main(args):
                     trajectory_all = pd.DataFrame()
                     for f in groupfiles:
                         try:
-                            ds = xr.open_dataset(f)
+                            ds = xr.open_dataset(f, decode_times=False)
                         except OSError as e:
                             logging.error('Error reading file {:s} ({:})'.format(f, e))
                             status = 1
@@ -285,7 +285,8 @@ def main(args):
                             status = 1
                             continue
 
-                        times = np.append(times, ds.time.values)
+                        dstime = cf.convert_epoch_ts(ds['time'])
+                        times = np.append(times, dstime)
 
                         data_idx, pressure_idx = identify_nans(ds, testvar)
 
@@ -312,8 +313,9 @@ def main(args):
                         else:
                             # down cast
                             df['downs'] = 1
-                        trajectory = trajectory.append(df)
-                        trajectory_all = trajectory_all.append(df_all)
+                        trajectory = pd.concat([trajectory, df])  # trajectory = trajectory.append(df)
+                        trajectory_all = pd.concat([trajectory_all, df_all])  # trajectory_all = trajectory_all.append(df_all)
+
                         ds.close()
 
                     if len(times) == 0:
@@ -358,6 +360,10 @@ def main(args):
                                     shift_dict[testvar]['t0'] = min_time
                                     shift_dict[testvar]['tf'] = max_time
                                 else:
+                                    # convert timestamps
+                                    trajectory.index = cf.convert_epoch_ts(trajectory.index)
+                                    trajectory_all.index = cf.convert_epoch_ts(trajectory_all.index)
+
                                     # removes duplicates and syncs the dataframes so they can be merged when shifted
                                     trajectory_resample = trajectory.resample('1s').mean()
 
@@ -400,7 +406,7 @@ def main(args):
                                                 ups_binned = pressure_bins(ups_df)
                                                 ups_binned.dropna(inplace=True)
 
-                                                downs_ups = downs_binned.append(ups_binned.iloc[::-1])
+                                                downs_ups = pd.concat([downs_binned, ups_binned.iloc[::-1]])  # downs_ups = downs_binned.append(ups_binned.iloc[::-1])
 
                                                 # calculate area between curves
                                                 polygon_points = downs_ups.values.tolist()
@@ -454,7 +460,7 @@ def main(args):
                 # add the optimal time shifts back into the .nc files
                 for f in groupfiles:
                     try:
-                        with xr.open_dataset(f) as ds:
+                        with xr.open_dataset(f, decode_times=False) as ds:
                             ds = ds.load()
                     except OSError as e:
                         logging.error('Error reading file {:s} ({:})'.format(f, e))
@@ -476,10 +482,14 @@ def main(args):
                             shifted_data = data.values.copy()
                         else:
                             df = items['shifted_df']
-                            df_file = df[(df.index >= np.nanmin(data.time)) & (df.index <= np.nanmax(data.time))].copy()
+                            data_time = cf.convert_epoch_ts(data.time)
+                            df_file = df[(df.index >= np.nanmin(data_time)) & (df.index <= np.nanmax(data_time))].copy()
                             df_file.dropna(inplace=True)
                             data_df = data.to_dataframe()
                             data_df[data_shift_varname] = np.nan
+
+                            # convert timestamps to date times in dataframe
+                            data_df.index = data_time
 
                             # insert the shifted data in the location of the closest timestamp from the original file
                             for name, row in df_file.iterrows():
@@ -503,7 +513,7 @@ def main(args):
                                           name=data_shift_varname, attrs=attrs)
 
                         # use the encoding from the original variable that was time shifted
-                        set_encoding(da, original_encoding=data.encoding)
+                        cf.set_encoding(da, original_encoding=data.encoding)
 
                         # Add the shifted data to the dataset
                         ds[data_shift_varname] = da
@@ -530,13 +540,13 @@ def main(args):
                                           name=shift_varname, attrs=attrs)
 
                         # define variable encoding
-                        set_encoding(da)
+                        cf.set_encoding(da)
 
                         # Add the optimal shift to the original dataset
                         ds[shift_varname] = da
 
                     # update the history attr
-                    now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+                    now = dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
                     if not hasattr(ds, 'history'):
                         ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
                     else:

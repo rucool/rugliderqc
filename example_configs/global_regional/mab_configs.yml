@@ -2,8 +2,8 @@ contexts:
     -   priority: 1
         region: mab
         window:
-            starting: 2021-07-01T00:00:00Z
-            ending: 2021-08-31T23:59:59Z
+            starting: 2021-07-01T00:00:00
+            ending: 2021-08-31T23:59:59.999999
         streams:
             conductivity:
                 qartod:
@@ -57,8 +57,8 @@ contexts:
     -   priority: 1
         region: mab
         window:
-            starting: 2021-09-01T00:00:00Z
-            ending: 2021-11-30T23:59:59Z
+            starting: 2021-09-01T00:00:00
+            ending: 2021-11-30T23:59:59.999999
         streams:
             conductivity:
                 qartod:
@@ -112,8 +112,8 @@ contexts:
     -   priority: 3
         region: mab
         window:
-            starting: 2021-01-01T00:00:00Z
-            ending: 2021-12-31T23:59:59Z
+            starting: 2021-01-01T00:00:00
+            ending: 2021-12-31T23:59:59.999999
         streams:
             conductivity:
                 qartod:
