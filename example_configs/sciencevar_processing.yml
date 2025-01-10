@@ -29,7 +29,7 @@ pH:
   use_sourcevar_attrs: False
   attrs:
     long_name: Total Alkalinity
-    units: umol/kg
+    units: umol kg-1
     observation_type: calculated
     ancillary_variables: salinity
     comment: 'Estimated from salinity using a linear relationship (TA = m * salinity + b) with the following seasonal coefficients: (-insert_coefficients-) determined from in-situ water sampling data taken during glider deployments and recoveries in addition to ship-based water samples in the Mid-Atlantic Bight region as described in Wright-Fairbanks et al 2020 https://doi.org/10.1029/2020JC016505'
