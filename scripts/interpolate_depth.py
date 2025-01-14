@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 8/11/2023
-Last modified: lgarzio on 12/20/2024
+Last modified: lgarzio on 1/14/2025
 Add interpolated depth to files.
 """
 
@@ -122,6 +122,7 @@ def main(args):
                 attrs['comment'] = f'Linear interpolated depth using pandas.DataFrame.interpolate'
                 attrs['long_name'] = 'Interpolated Depth'
                 attrs['source_sensor'] = 'depth'
+                attrs['standard_name'] = 'depth'
 
                 da = xr.DataArray(depth_interp.astype(ds.depth.dtype), coords=ds.depth.coords, dims=ds.depth.dims,
                                   name='depth_interpolated', attrs=attrs)
