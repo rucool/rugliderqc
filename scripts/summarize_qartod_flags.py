@@ -2,7 +2,7 @@
 
 """
 Author: lgarzio on 1/18/2022
-Last modified: lgarzio on 12/20/2024
+Last modified: lgarzio on 1/15/2025
 Summarize the QARTOD QC flags for each variable. Excludes climatology test.
 """
 
@@ -29,7 +29,7 @@ def set_summary_qartod_attrs(sensor, ancillary_variables):
 
     flag_meanings = 'GOOD NOT_EVALUATED SUSPECT FAIL MISSING'
     flag_values = [1, 2, 3, 4, 9]
-    standard_name = 'qartod_summary_quality_flag'
+    standard_name = 'aggregate_quality_flag'
     long_name = 'QARTOD Summary Quality Flag'
 
     # Define variable attributes
