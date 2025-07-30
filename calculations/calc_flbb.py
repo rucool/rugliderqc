@@ -64,7 +64,8 @@ def main(args):
 
         # make a copy of the variables, then re-calculate the original variable with the correct coefficients
         for v in variables:
-            ds[f'{v}_bad'] = ds[v].copy()
+            varbad = f'{v}_bad'
+            ds[varbad] = ds[v].copy()
 
             if v in ['chlorophyll_a', 'sci_flbbcd_chlor_units']:
                 cal_values = dict(
@@ -72,6 +73,7 @@ def main(args):
                     cwo=u_flbbcd_chlor_cwo
                 )
                 raw = 'sci_flbbcd_chlor_sig'
+                rawvals = ds[raw].values
                 rnd = True
             elif v in ['beta_700nm', 'sci_flbbcd_bb_units']:
                 cal_values = dict(
@@ -79,6 +81,11 @@ def main(args):
                     cwo=u_flbbcd_bb_cwo
                 )
                 raw = 'sci_flbbcd_bb_sig'
+                try:
+                    rawvals = ds[raw].values
+                except KeyError:
+                    raw = 'beta_700nm_signal'
+                    rawvals = ds[raw].values
                 rnd = False
             elif v in ['cdom', 'sci_flbbcd_cdom_units']:
                 cal_values = dict(
@@ -86,9 +93,14 @@ def main(args):
                     cwo=u_flbbcd_cdom_cwo
                 )
                 raw = 'sci_flbbcd_cdom_sig'
+                try:
+                    rawvals = ds[raw].values
+                except KeyError:
+                    raw = 'cdom_signal'
+                    rawvals = ds[raw].values
                 rnd = True
 
-            corrected_output = calculate_flbb(cal_values['sf'], cal_values['cwo'], ds[raw].values)
+            corrected_output = calculate_flbb(cal_values['sf'], cal_values['cwo'], rawvals)
 
             if rnd:
                 corrected_output = np.round(corrected_output, 4)
@@ -100,17 +112,18 @@ def main(args):
             else:
                 ds[v].attrs['comment'] = f'{ds[v].comment} {add_comment}'
 
-            if not hasattr(ds[f'{v}_bad'], 'comment'):
-                ds[f'{v}_bad'].attrs['comment'] = add_comment_bad
+            if not hasattr(ds[varbad], 'comment'):
+                ds[varbad].attrs['comment'] = add_comment_bad
             else:
-                ds[f'{v}_bad'].attrs['comment'] = f'{ds[f'{v}_bad'].comment} {add_comment_bad}'
+                ds[varbad].attrs['comment'] = f'{ds[varbad].comment} {add_comment_bad}'
 
             if level == 'raw-trajectory':
                 # fix the values for the calibration coefficients
                 for cn, cal_value in cal_values.items():
                     calname = raw.replace('sci', 'u')
                     calname = calname.replace('sig', cn)
-                    ds[f'{calname}_bad'] = ds[calname].copy()
+                    calnamebad = f'{calname}_bad'
+                    ds[calnamebad] = ds[calname].copy()
 
                     non_nan_ind = np.where(~np.isnan(ds[calname].values))[0]
                     if 'Mnodim' in ds[calname].units:
@@ -122,10 +135,10 @@ def main(args):
                     else:
                         ds[calname].attrs['comment'] = f'{ds[calname].comment} {add_comment_cc}'
 
-                    if not hasattr(ds[calname], 'comment'):
-                        ds[f'{calname}_bad'].attrs['comment'] = add_comment_cc_bad
+                    if not hasattr(ds[calnamebad], 'comment'):
+                        ds[calnamebad].attrs['comment'] = add_comment_cc_bad
                     else:
-                        ds[f'{calname}_bad'].attrs['comment'] = f'{ds[f'{calname}_bad'].comment} {add_comment_cc_bad}'
+                        ds[calnamebad].attrs['comment'] = f'{ds[calnamebad].comment} {add_comment_cc_bad}'
 
         if not hasattr(ds, 'history'):
             ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
