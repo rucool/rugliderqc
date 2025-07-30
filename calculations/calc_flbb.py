@@ -2,7 +2,7 @@
 
 """
 Author: Lori Garzio on 4/25/2024
-Last modified: 7/12/2024
+Last modified: 7/30/2025
 Re-calculate flbb variables (chl-a, cdom, backscatter) with corrected calibration coefficients and write over the
 existing files
 """
@@ -31,7 +31,9 @@ def main(args):
 
     now = dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
     add_comment = f'Incorrect optics FLBBCD calibration coefficients were corrected and data for this variable were re-calculated on {now}'
-    add_comment_cc = f'Incorrect optics FLBBCD calibration ceofficients were corrected on {now}'
+    add_comment_bad = f'Incorrect optics FLBBCD calibration coefficients were corrected on {now} and the original variable was saved with the _bad suffix'
+    add_comment_cc = f'Incorrect optics FLBBCD calibration ceofficients were corrected on {now}. This variable has the corrected values.'
+    add_comment_cc_bad = f'Incorrect optics FLBBCD calibration ceofficients were corrected on {now}. This variable has the original (incorrect) values.'
 
     files = sorted(glob.glob(os.path.join(filedir, '*.nc')))
     for f in files:
@@ -44,13 +46,21 @@ def main(args):
         elif level == 'raw-trajectory':
             variables = ['sci_flbbcd_chlor_units', 'sci_flbbcd_bb_units', 'sci_flbbcd_cdom_units']
 
-        # correct calibration coefficients for ru40-20240215T1642 FLBBCD SN 8632
-        u_flbbcd_chlor_cwo = 21  # clean water offset, nodim == counts
-        u_flbbcd_bb_cwo = 48  # clean water offset, nodim == counts
-        u_flbbcd_cdom_cwo = 50  # clean water offset, nodim == counts
-        u_flbbcd_chlor_sf = 0.0072  # scale factor to get units
-        u_flbbcd_bb_sf = .000001772  # (0.000003522) scale factor to get units
-        u_flbbcd_cdom_sf = 0.0919  # scale factor to get units
+        # # correct calibration coefficients for ru40-20240215T1642 FLBBCD SN 8632
+        # u_flbbcd_chlor_cwo = 21  # clean water offset, nodim == counts
+        # u_flbbcd_bb_cwo = 48  # clean water offset, nodim == counts
+        # u_flbbcd_cdom_cwo = 50  # clean water offset, nodim == counts
+        # u_flbbcd_chlor_sf = 0.0072  # scale factor to get units
+        # u_flbbcd_bb_sf = .000001772  # (0.000003522) scale factor to get units
+        # u_flbbcd_cdom_sf = 0.0919  # scale factor to get units
+
+        # correct calibration coefficients for ru32-20241021T1701 FLBBCD SN 4662
+        u_flbbcd_chlor_cwo = 44  # clean water offset, nodim == counts
+        u_flbbcd_bb_cwo = 44  # clean water offset, nodim == counts
+        u_flbbcd_cdom_cwo = 43  # clean water offset, nodim == counts
+        u_flbbcd_chlor_sf = 0.0073  # scale factor to get units
+        u_flbbcd_bb_sf = 1.611  # (0.000003522) scale factor to get units
+        u_flbbcd_cdom_sf = 0.0903  # scale factor to get units
 
         # make a copy of the variables, then re-calculate the original variable with the correct coefficients
         for v in variables:
@@ -90,6 +100,11 @@ def main(args):
             else:
                 ds[v].attrs['comment'] = f'{ds[v].comment} {add_comment}'
 
+            if not hasattr(ds[f'{v}_bad'], 'comment'):
+                ds[f'{v}_bad'].attrs['comment'] = add_comment_bad
+            else:
+                ds[f'{v}_bad'].attrs['comment'] = f'{ds[f'{v}_bad'].comment} {add_comment_bad}'
+
             if level == 'raw-trajectory':
                 # fix the values for the calibration coefficients
                 for cn, cal_value in cal_values.items():
@@ -107,6 +122,11 @@ def main(args):
                     else:
                         ds[calname].attrs['comment'] = f'{ds[calname].comment} {add_comment_cc}'
 
+                    if not hasattr(ds[calname], 'comment'):
+                        ds[f'{calname}_bad'].attrs['comment'] = add_comment_cc_bad
+                    else:
+                        ds[f'{calname}_bad'].attrs['comment'] = f'{ds[f'{calname}_bad'].comment} {add_comment_cc_bad}'
+
         if not hasattr(ds, 'history'):
             ds.attrs['history'] = f'{now}: {os.path.basename(__file__)}'
         else:
@@ -123,7 +143,7 @@ if __name__ == '__main__':
 
     arg_parser.add_argument('filedir',
                             help='Full filepath to directory containing .nc files. '
-                                 'e.g. /home/coolgroup/slocum/deployments/2024/ru40-20240215T1642/data/out/nc/sci-profile/delayed')
+                                 'e.g. /$HOME/deployments/2024/ru40-20240215T1642/data/out/nc/sci-profile/delayed')
 
     arg_parser.add_argument('--level',
                             choices=['sci-profile', 'raw-trajectory'],
