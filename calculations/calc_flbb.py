@@ -59,7 +59,7 @@ def main(args):
         u_flbbcd_bb_cwo = 44  # clean water offset, nodim == counts
         u_flbbcd_cdom_cwo = 43  # clean water offset, nodim == counts
         u_flbbcd_chlor_sf = 0.0073  # scale factor to get units
-        u_flbbcd_bb_sf = 1.611  # (0.000003522) scale factor to get units
+        u_flbbcd_bb_sf = 0.000001611  # (0.000003522) scale factor to get units
         u_flbbcd_cdom_sf = 0.0903  # scale factor to get units
 
         # make a copy of the variables, then re-calculate the original variable with the correct coefficients
