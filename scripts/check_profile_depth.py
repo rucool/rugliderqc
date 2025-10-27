@@ -4,7 +4,7 @@
 Author: lgarzio on 10/27/2025
 Last modified: lgarzio on 10/27/2025
 Check that profiles have at least 5 depth data points
-and span at least 10m
+and 1m depth binned profiles have at least (depth range / 10) bins (minimum 5 bins).
 """
 
 import os
@@ -81,7 +81,6 @@ def main(args):
                 logging.error(' 0 files found to check: {:s}'.format(os.path.join(data_path, 'qc_queue')))
                 continue
 
-            # Iterate through files, check for science variables, and check for values of 0.0
             summary = 0
             for f in ncfiles:
                 try:
@@ -96,6 +95,7 @@ def main(args):
                     os.rename(f, f'{f}.bad')
                     continue
 
+                # find the depth variable, either depth or pressure
                 try:
                     testvar = ds.depth
                 except AttributeError:
@@ -107,16 +107,19 @@ def main(args):
                         logging.warning(' No depth or pressure variable found in file: {:s}'.format(f))
                         continue
                 
+                # check that there are more than 5 depth data points, otherwise exclude the profile file
                 if np.sum(~np.isnan(testvar)) < 5:
                     os.rename(f, f'{f}.exclude')
                     logging.debug('<5 depth data points found in file, exluding from dataset: {:s}'.format(f))
                     summary += 1
+                # check that the number of 1m depth bins with data is > (depth range / 10) bins (minimum 5 bins)
                 else:
                     df = testvar.to_dataframe()
                     
                     # convert values <0.1 to 0.1
                     df.loc[df[testvar.name] < 0.1] = 0.1
                     
+                    # calculate number of bins allowed
                     depth_range = np.nanmax(df[testvar.name]) - np.nanmin(df[testvar.name])
                     bins_allowed = math.ceil(depth_range / 10)
 
@@ -129,7 +132,7 @@ def main(args):
                     cut = pd.cut(df[testvar.name], bins)
                     binned_df = df.groupby(cut, observed=False).mean().dropna()  # depth bins, drop the nans
 
-                    #if depth_range < 10.0:
+                    # check if number of 1m depth bins with data > than bins allowed, otherwise exclude the profile file
                     if len(binned_df) < bins_allowed:
                         os.rename(f, f'{f}.exclude')
                         logging.debug(f'Count of 1m depth bins ({len(binned_df)}) is less than bins allowed ({bins_allowed}) in file: {f}')
