@@ -11,6 +11,8 @@ import os
 import argparse
 import sys
 import glob
+import math
+import pandas as pd
 import xarray as xr
 import numpy as np
 import rugliderqc.common as cf
@@ -95,7 +97,7 @@ def main(args):
                     continue
 
                 try:
-                    testvar = ds.depth.values
+                    testvar = ds.depth
                 except AttributeError:
                     try:
                         testvar = ds.pressure
@@ -110,14 +112,30 @@ def main(args):
                     logging.debug('<5 depth data points found in file, exluding from dataset: {:s}'.format(f))
                     summary += 1
                 else:
-                    depth_range = np.nanmax(testvar) - np.nanmin(testvar)
-                    #print(depth_range)
-                    if depth_range < 10.0:
+                    df = testvar.to_dataframe()
+                    
+                    # convert values <0.1 to 0.1
+                    df.loc[df[testvar.name] < 0.1] = 0.1
+                    
+                    depth_range = np.nanmax(df[testvar.name]) - np.nanmin(df[testvar.name])
+                    bins_allowed = math.ceil(depth_range / 10)
+
+                    if bins_allowed < 5:
+                        bins_allowed = 5
+                    
+                    # bin the data in 1m depth bins
+                    stride = 1
+                    bins = np.arange(0, np.nanmax(df[testvar.name]) + stride, stride)
+                    cut = pd.cut(df[testvar.name], bins)
+                    binned_df = df.groupby(cut, observed=False).mean().dropna()  # depth bins, drop the nans
+
+                    #if depth_range < 10.0:
+                    if len(binned_df) < bins_allowed:
                         os.rename(f, f'{f}.exclude')
-                        logging.debug('Profile depth range less than 10m ({:.2f}m) in file: {:s}'.format(depth_range, f))
+                        logging.debug(f'Count of 1m depth bins ({len(binned_df)}) is less than bins allowed ({bins_allowed}) in file: {f}')
                         summary += 1
 
-            logging.info('{:} of {:} files either had <5 depth data points or profiles <10m depth range'.format(summary, len(ncfiles)))
+            logging.info('{:} of {:} files either had <5 depth data points or 1m depth bins was less than bins allowed'.format(summary, len(ncfiles)))
 
 
 if __name__ == '__main__':
