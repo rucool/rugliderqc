@@ -1,6 +1,7 @@
 add_derived_variables: True
 check_science_variables: True
 check_duplicate_timestamps: True
+check_profile_depth: True
 qartod: True
 interp_depth: True
 hysteresis: True
