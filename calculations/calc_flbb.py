@@ -2,7 +2,7 @@
 
 """
 Author: Lori Garzio on 4/25/2024
-Last modified: 7/30/2025
+Last modified: 76/23/2026
 Re-calculate flbb variables (chl-a, cdom, backscatter) with corrected calibration coefficients and write over the
 existing files
 """
@@ -54,13 +54,21 @@ def main(args):
         # u_flbbcd_bb_sf = .000001772  # (0.000003522) scale factor to get units
         # u_flbbcd_cdom_sf = 0.0919  # scale factor to get units
 
-        # correct calibration coefficients for ru32-20241021T1701 FLBBCD SN 4662
-        u_flbbcd_chlor_cwo = 44  # clean water offset, nodim == counts
-        u_flbbcd_bb_cwo = 44  # clean water offset, nodim == counts
-        u_flbbcd_cdom_cwo = 43  # clean water offset, nodim == counts
-        u_flbbcd_chlor_sf = 0.0073  # scale factor to get units
-        u_flbbcd_bb_sf = 0.000001611  # (0.000003522) scale factor to get units
-        u_flbbcd_cdom_sf = 0.0903  # scale factor to get units
+        # # correct calibration coefficients for ru32-20241021T1701 FLBBCD SN 4662
+        # u_flbbcd_chlor_cwo = 44  # clean water offset, nodim == counts
+        # u_flbbcd_bb_cwo = 44  # clean water offset, nodim == counts
+        # u_flbbcd_cdom_cwo = 43  # clean water offset, nodim == counts
+        # u_flbbcd_chlor_sf = 0.0073  # scale factor to get units
+        # u_flbbcd_bb_sf = 0.000001611  # (0.000003522) scale factor to get units
+        # u_flbbcd_cdom_sf = 0.0903  # scale factor to get units
+
+         # correct calibration coefficients for ru43-20260507T1706 FLBBCD SN 6312 cal 9/23/2024
+        u_flbbcd_chlor_cwo = 48  # clean water offset, nodim == counts
+        u_flbbcd_bb_cwo = 53  # clean water offset, nodim == counts
+        u_flbbcd_cdom_cwo = 51  # clean water offset, nodim == counts
+        u_flbbcd_chlor_sf = 0.0074  # scale factor to get units
+        u_flbbcd_bb_sf = 0.000001749  # (0.000003522) scale factor to get units
+        u_flbbcd_cdom_sf = 0.0908  # scale factor to get units
 
         # make a copy of the variables, then re-calculate the original variable with the correct coefficients
         for v in variables:
