@@ -2,7 +2,7 @@
 
 """
 Author: Lori Garzio on 4/25/2024
-Last modified: 76/23/2026
+Last modified: 6/25/2026
 Re-calculate flbb variables (chl-a, cdom, backscatter) with corrected calibration coefficients and write over the
 existing files
 """
@@ -45,6 +45,8 @@ def main(args):
             variables = ['chlorophyll_a', 'beta_700nm', 'cdom']
         elif level == 'raw-trajectory':
             variables = ['sci_flbbcd_chlor_units', 'sci_flbbcd_bb_units', 'sci_flbbcd_cdom_units']
+        elif level == 'ngdac-profile':
+            variables = ['chlorophyll_a', 'beta_700nm', 'cdom']
 
         # # correct calibration coefficients for ru40-20240215T1642 FLBBCD SN 8632
         # u_flbbcd_chlor_cwo = 21  # clean water offset, nodim == counts
@@ -81,7 +83,11 @@ def main(args):
                     cwo=u_flbbcd_chlor_cwo
                 )
                 raw = 'sci_flbbcd_chlor_sig'
-                rawvals = ds[raw].values
+                try:
+                    rawvals = ds[raw].values
+                except KeyError:
+                    raw = 'chlorophyll_a_signal'
+                    rawvals = ds[raw].values
                 rnd = True
             elif v in ['beta_700nm', 'sci_flbbcd_bb_units']:
                 cal_values = dict(
@@ -167,7 +173,7 @@ if __name__ == '__main__':
                                  'e.g. /$HOME/deployments/2024/ru40-20240215T1642/data/out/nc/sci-profile/delayed')
 
     arg_parser.add_argument('--level',
-                            choices=['sci-profile', 'raw-trajectory'],
+                            choices=['sci-profile', 'raw-trajectory', 'ngdac-profile'],
                             help='Dataset type')
 
     parsed_args = arg_parser.parse_args()
